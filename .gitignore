@@ -1,0 +1,23 @@
+# Ignorar entorno virtual
+.venv/
+
+# Archivos compilados de Python
+__pycache__/
+*.pyc
+
+# Notebooks checkpoints
+*.ipynb_checkpoints
+
+# Datos grandes
+data/raw/
+data/processed/
+
+# Modelos entrenados
+*.h5
+*.pt
+
+# Logs
+*.log
+
+# Otros
+.DS_Store
