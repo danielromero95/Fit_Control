@@ -1,86 +1,113 @@
+# src/A_preprocessing/image_preprocessing.py
+
 import cv2
-import numpy as np
+import os
+import argparse
+from src.A_preprocessing.file_extensions import IMAGE_EXTENSIONS  # importar extensiones de imagen
 
-# Preprocesamiento de imágenes: conversión de espacio de color
-def convert_color(frame, target_space='rgb'):
+def preprocess_images(input_dir, output_dir, target_width=256, target_height=256, normalize=False):
     """
-    Convierte `frame` de BGR a RGB o a escala de grises.
+    Recorre todas las imágenes con extensiones aceptadas (definidas en IMAGE_EXTENSIONS)
+    dentro de `input_dir`, las redimensiona a (target_width, target_height) y
+    opcionalmente normaliza sus valores de píxel (escalar de 0–255 a 0.0–1.0). Guarda las
+    imágenes resultantes en `output_dir` con el mismo nombre de archivo.
+
+    Parámetros:
+        - input_dir   : directorio donde están los fotogramas originales.
+        - output_dir  : directorio donde se guardarán las imágenes procesadas.
+        - target_width  : ancho al que se redimensionará cada imagen (por defecto: 256).
+        - target_height : alto al que se redimensionará cada imagen (por defecto: 256).
+        - normalize   : si es True, convierte el rango de píxel 0–255 a 0.0–1.0.
+    Retorna:
+        - total_imgs : número total de imágenes procesadas.
     """
-    if target_space == 'rgb':
-        return cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    elif target_space == 'gray':
-        return cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    else:
-        raise ValueError(f"Espacio de color desconocido: {target_space}")
+    # Verificar que el directorio de entrada exista
+    if not os.path.isdir(input_dir):
+        raise NotADirectoryError(f"El directorio de entrada no existe: {input_dir}")
+
+    # Crear directorio de salida si no existe
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Listar todos los archivos en el directorio de entrada que tengan una extensión válida
+    all_files = sorted([
+        f for f in os.listdir(input_dir)
+        if os.path.splitext(f.lower())[1] in IMAGE_EXTENSIONS
+    ])
+
+    total_imgs = 0
+
+    for filename in all_files:
+        input_path = os.path.join(input_dir, filename)
+        output_path = os.path.join(output_dir, filename)
+
+        # Leer la imagen con OpenCV (BGR)
+        img = cv2.imread(input_path)
+        if img is None:
+            print(f"[WARNING] No se pudo leer la imagen: {input_path}")
+            continue
+
+        # Redimensionar la imagen a (target_width x target_height)
+        img_resized = cv2.resize(img, (target_width, target_height), interpolation=cv2.INTER_AREA)
+
+        # Si se pide normalizar, convertimos de 0–255 a 0.0–1.0 y luego reconvertimos a 0–255
+        if normalize:
+            img_resized = img_resized.astype("float32") / 255.0
+            # Para guardar en JPEG volvemos a escalar a 0–255:
+            img_resized = (img_resized * 255.0).astype("uint8")
+
+        # Guardar la imagen resultado
+        cv2.imwrite(output_path, img_resized)
+        total_imgs += 1
+
+    return total_imgs
 
 
-# Preprocesamiento de imágenes: redimensionar y normalizar
-def preprocess_resize_normalize(frames, target_size=(256,256)):
-    processed = []
-    for f in frames:
-        img = cv2.resize(f, target_size, interpolation=cv2.INTER_AREA)
-        img = img.astype('float32') / 255.0
-        processed.append(img)
-    return np.stack(processed)  # shape: (n_frames, H, W, C)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Preprocesa imágenes: redimensiona y (opcionalmente) normaliza."
+    )
+    parser.add_argument(
+        "--input_dir",
+        required=True,
+        help="Directorio que contiene los fotogramas extraídos (ej.: data/processed/frames/1-Squat_Own)."
+    )
+    parser.add_argument(
+        "--output_dir",
+        required=True,
+        help="Directorio donde se guardarán las imágenes procesadas (ej.: data/processed/images/1-Squat_Own)."
+    )
+    parser.add_argument(
+        "--width",
+        type=int,
+        default=256,
+        help="Ancho al que se redimensionarán las imágenes (por defecto: 256)."
+    )
+    parser.add_argument(
+        "--height",
+        type=int,
+        default=256,
+        help="Alto al que se redimensionarán las imágenes (por defecto: 256)."
+    )
+    parser.add_argument(
+        "--normalize",
+        action="store_true",
+        help="Si se incluye este flag, se normalizarán los valores de píxel (0–255 => 0.0–1.0)."
+    )
 
+    args = parser.parse_args()
 
-# Preprocesamiento de imágenes: aplicar desenfoque gaussiano
-def apply_gaussian_blur(frames, kernel_size=(3,3)):
-    blurred = []
-    for f in frames:
-        # f es array float32 en [0,1]; convertir a uint8 si es necesario
-        img_uint8 = (f * 255).astype('uint8')
-        blur = cv2.GaussianBlur(img_uint8, kernel_size, 0)
-        blur = blur.astype('float32') / 255.0
-        blurred.append(blur)
-    return blurred
+    total = preprocess_images(
+        input_dir=args.input_dir,
+        output_dir=args.output_dir,
+        target_width=args.width,
+        target_height=args.height,
+        normalize=args.normalize
+    )
 
-# Preprocesamiento de imágenes: detección y recorte de personas
-hog = cv2.HOGDescriptor()
-hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
-
-def detect_and_crop_person(frame, margin=0.1):
-    """
-    Detecta persona y recorta con un margen relativo.
-    Retorna el recorte y las coordenadas originales.
-    """
-
-    """
-    Pruebas unitarias sugeridas:
-    Test con imagen que contenga personas: verificar que el ROI sea más pequeño que la imagen original. 
-    Test con imagen sin personas: ROI = imagen original.
-    """
-    rects, _ = hog.detectMultiScale(frame, winStride=(8,8))
-    if len(rects) == 0:
-        return frame  # Sin detección, devolver frame completo
-    x, y, w, h = rects[0]
-    # Aplicar margen
-    dw = int(w * margin)
-    dh = int(h * margin)
-    x1 = max(0, x - dw)
-    y1 = max(0, y - dh)
-    x2 = min(frame.shape[1], x + w + dw)
-    y2 = min(frame.shape[0], y + h + dh)
-    return frame[y1:y2, x1:x2]
-
-# Preprocesamiento de imágenes: aplicar CLAHE
-def apply_CLAHE(frame):
-    """
-    Asume que `frame` está en RGB. Aplica CLAHE en canal Y y retorna frame RGB.
-    """
-
-    """
-    Pruebas unitarias sugeridas:
-    Test con imagen en escala de grises: verificar que el resultado sea igual al original.
-    Test con imagen en color: verificar que el resultado tenga el mismo tamaño y tipo de datos.
-    Test con imagen sin contraste: verificar que el resultado no cambie significativamente.
-    Verificar que el output tenga valores en [0,1].
-    """
-    # Convertir a YUV
-    yuv = cv2.cvtColor((frame * 255).astype('uint8'), cv2.COLOR_RGB2YUV)
-    y, u, v = cv2.split(yuv)
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-    y_eq = clahe.apply(y)
-    yuv_eq = cv2.merge((y_eq, u, v))
-    rgb_eq = cv2.cvtColor(yuv_eq, cv2.COLOR_YUV2RGB)
-    return rgb_eq.astype('float32') / 255.0
+    print("----- Resumen de preprocesamiento -----")
+    print(f"Directorio de entrada : {args.input_dir}")
+    print(f"Directorio de salida  : {args.output_dir}")
+    print(f"Imágenes procesadas   : {total}")
+    print(f"Tamaño final (w×h)    : {args.width}×{args.height}")
+    print(f"Normalize aplicado    : {args.normalize}")
+    print("----- Proceso completado -----")

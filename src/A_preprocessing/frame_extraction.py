@@ -3,6 +3,7 @@
 import cv2
 import os
 import argparse
+from src.A_preprocessing.file_extensions import VIDEO_EXTENSIONS  # importar extensiones de video
 
 def extract_frames(video_path, output_dir, sample_rate=3, rotate=0):
     """
@@ -20,6 +21,12 @@ def extract_frames(video_path, output_dir, sample_rate=3, rotate=0):
         - sample_rate: tomar 1 fotograma de cada N (por defecto: 3).
         - rotate: grados de rotación por fotograma (0, 90, 180, 270).
     """
+    # Verificar que la extensión del vídeo sea válida
+    ext = os.path.splitext(video_path)[1].lower()
+    if ext not in VIDEO_EXTENSIONS:
+        raise ValueError(f"Extensión de video no soportada: '{ext}'. "
+                         f"Se esperan: {sorted(VIDEO_EXTENSIONS)}")
+
     # Intentar abrir el vídeo
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
@@ -115,3 +122,4 @@ if __name__ == "__main__":
     print(f"Rotación aplicada   : {args.rotate} grados")
     print(f"Directorio de salida: {args.output}")
     print("----- Extracción completada -----")
+
