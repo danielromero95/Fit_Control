@@ -1,30 +1,52 @@
-import mediapipe as mp
+# src/B_pose_estimation/pose_utils.py
+
+import os
+import cv2
 import numpy as np
 import math
+import argparse
+import pandas as pd
 
-mp_pose = mp.solutions.pose
+# --- NOTA: Ya no importamos mediapipe a nivel global ---
+# from mediapipe.python.solutions import pose as mp_pose_module
+# from mediapipe.python.solutions import drawing_utils as mp_drawing_utils
 
+# ---------------------------------------------------------------------------------
+# 1. CLASE PoseEstimator (importa mediapipe SOLO si se instancia)
+# ---------------------------------------------------------------------------------
 class PoseEstimator:
-
     """
-    Pruebas unitarias sugeridas:
-    - Test con imagen sintética (por ejemplo, un frame de prueba) y verificar que landmarks sea una lista de largo 33 (MediaPipe Pose detecta 33 puntos).
-    - Test con imagen vacía o sin persona: landmarks = None.
+    Encapsula MediaPipe Pose (solo 'mediapipe.python.solutions.pose') para detección.
+    La importación de MediaPipe se hace en el constructor, de manera que si
+    nunca se usa este objeto (e.g. en filter_interp/metrics), no falla.
     """
     def __init__(self, static_image_mode=False, model_complexity=1, min_detection_confidence=0.5):
-        self.pose = mp_pose.Pose(static_image_mode=static_image_mode,
-                                 model_complexity=model_complexity,
-                                 min_detection_confidence=min_detection_confidence)
+        # Importamos aquí para no exigir mediapipe si nunca se usa este constructor:
+        from mediapipe.python.solutions import pose as mp_pose_module
+        from mediapipe.python.solutions import drawing_utils as mp_drawing_utils
+
+        self.mp_pose_module = mp_pose_module
+        self.mp_drawing_utils = mp_drawing_utils
+
+        # Creamos el objeto Pose
+        self.pose = self.mp_pose_module.Pose(
+            static_image_mode=static_image_mode,
+            model_complexity=model_complexity,
+            min_detection_confidence=min_detection_confidence
+        )
 
     def estimate_pose(self, image):
         """
-        Recibe `image` en formato RGB, retorna:
-        - landmarks: lista de dicts { 'x':..., 'y':..., 'z':..., 'visibility':... }
-        - image_out: imagen con landmarks dibujados (opcional)
+        Recibe `image` en formato BGR (OpenCV), retorna:
+          - landmarks: lista de 33 dicts {'x','y','z','visibility'} o None si no detecta.
+          - annotated_image: copia de imagen con landmarks dibujados (BGR).
         """
-        results = self.pose.process(image)
+        img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        results = self.pose.process(img_rgb)
+
         if not results.pose_landmarks:
             return None, image
+
         landmarks = []
         for lm in results.pose_landmarks.landmark:
             landmarks.append({
@@ -33,91 +55,101 @@ class PoseEstimator:
                 'z': lm.z,
                 'visibility': lm.visibility
             })
-        # Dibujar sobre copia de imagen
+
         annotated = image.copy()
-        mp.solutions.drawing_utils.draw_landmarks(
-            annotated, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+        self.mp_drawing_utils.draw_landmarks(
+            annotated,
+            results.pose_landmarks,
+            self.mp_pose_module.POSE_CONNECTIONS
+        )
         return landmarks, annotated
 
-# Filtrar y interpolar secuencia de keypoints
+    def close(self):
+        self.pose.close()
+
+
+# ---------------------------------------------------------------------------------
+# 2. FILTRADO E INTERPOLACIÓN
+# ---------------------------------------------------------------------------------
 def filter_and_interpolate_keypoints(landmarks_sequence, min_confidence=0.5):
     """
     Recibe una lista de lista de landmarks por fotograma:
     landmarks_sequence = [landmarks_t0, landmarks_t1, ..., landmarks_tN]
     Cada landmarks_t es lista de dicts o None.
     Retorna:
-    - secuencia_filtrada: misma estructura, con puntos interpolados o None.
+      - secuencia_filtrada: misma estructura, con puntos interpolados o None.
     """
     n_frames = len(landmarks_sequence)
-    n_points = 33  # número de keypoints de MediaPipe Pose
-    # Inicializar array: shape (n_frames, n_points, 3) -> (x,y,visibility)
-    arr = np.zeros((n_frames, n_points, 3), dtype=float)
+    n_points = 33
+    arr = np.zeros((n_frames, n_points, 3), dtype=float)  # x, y, visibility
     valid = np.zeros((n_frames, n_points), dtype=bool)
+
     for t, lm in enumerate(landmarks_sequence):
         if lm is None:
             continue
-        for i, point in enumerate(lm):
-            if point['visibility'] >= min_confidence:
-                arr[t, i, 0] = point['x']
-                arr[t, i, 1] = point['y']
-                arr[t, i, 2] = point['visibility']
+        for i, pt in enumerate(lm):
+            if pt['visibility'] >= min_confidence:
+                arr[t, i, 0] = pt['x']
+                arr[t, i, 1] = pt['y']
+                arr[t, i, 2] = pt['visibility']
                 valid[t, i] = True
-    # Interpolación en tiempo para cada punto
+
     for i in range(n_points):
-        valid_indices = np.where(valid[:, i])[0]
-        if len(valid_indices) == 0:
+        valid_idx = np.where(valid[:, i])[0]
+        if len(valid_idx) == 0:
             continue
-        # Interpolación lineal para x,y separadamente
-        for dim in [0,1]:
-            arr[:, i, dim] = np.interp(
-                np.arange(n_frames),
-                valid_indices,
-                arr[valid_indices, i, dim]
-            )
-        # Marcar visibilidad interpolada como 1
-        arr[~valid[:, i], i, 2] = 0.0  # visibility bajo confianza
-    # Construir secuencia filtrada
+        arr[:, i, 0] = np.interp(np.arange(n_frames), valid_idx, arr[valid_idx, i, 0])
+        arr[:, i, 1] = np.interp(np.arange(n_frames), valid_idx, arr[valid_idx, i, 1])
+        arr[~valid[:, i], i, 2] = 0.0  # visibilidad interpolada = 0 en puntos no válidos
+
     filtered_seq = []
     for t in range(n_frames):
-        points = []
-        count_low = 0
-        for i in range(n_points):
-            vis = arr[t, i, 2]
-            if vis < min_confidence:
-                count_low += 1
-            points.append({'x': arr[t, i, 0], 'y': arr[t, i, 1], 'visibility': vis})
-        # Si hay más del 20% de puntos con vis < min_confidence, descartar fotograma
+        count_low = np.sum(arr[t, :, 2] < min_confidence)
         if count_low / n_points > 0.2:
             filtered_seq.append(None)
         else:
-            filtered_seq.append(points)
+            pts = []
+            for i in range(n_points):
+                pts.append({
+                    'x': arr[t, i, 0],
+                    'y': arr[t, i, 1],
+                    'visibility': arr[t, i, 2]
+                })
+            filtered_seq.append(pts)
     return filtered_seq
 
-# Normalizar keypoints centrados en caderas
-def normalize_landmarks(landmarks, image_width, image_height):
+
+# ---------------------------------------------------------------------------------
+# 3. NORMALIZACIÓN (CENTRADO EN CADERA)
+# ---------------------------------------------------------------------------------
+def normalize_landmarks(landmarks):
     """
-    Recibe una lista de keypoints {x, y, visibility} normalizados en [0,1] sobre imagen.
-    Centra el sistema en el punto medio de cadera ((x_izq + x_der)/2, (y_izq + y_der)/2).
-    Retorna una lista de vectores normalizados.
+    Recibe lista de 33 keypoints {'x','y','visibility'} normalizados en [0,1].
+    Centra en el punto medio de cadera ((x_izq + x_der)/2, (y_izq + y_der)/2).
+    Retorna lista de dicts {'x','y','visibility'} normalizados.
     """
-    # Indices de cadera en MediaPipe:  
-    # 23 = cadera izquierda, 24 = cadera derecha
     hip_left = landmarks[23]
     hip_right = landmarks[24]
     cx = (hip_left['x'] + hip_right['x']) / 2
     cy = (hip_left['y'] + hip_right['y']) / 2
+
     normalized = []
     for lm in landmarks:
-        nx = (lm['x'] - cx)  # ya en [–1,1] aprox.
-        ny = (lm['y'] - cy)
-        normalized.append({'x': nx, 'y': ny, 'visibility': lm['visibility']})
+        normalized.append({
+            'x': lm['x'] - cx,
+            'y': lm['y'] - cy,
+            'visibility': lm['visibility']
+        })
     return normalized
 
 
+# ---------------------------------------------------------------------------------
+# 4. ÁNGULOS DE ARTICULACIONES
+# ---------------------------------------------------------------------------------
 def calculate_angle(p1, p2, p3):
     """
-    Calcula ángulo (en grados) formado en p2 por p1-p2-p3. 
-    Cada punto es dict {'x':..., 'y':...}.
+    Calcula ángulo (en grados) formado en p2 por p1-p2-p3.
+    Cada punto es dict {'x','y'}.
     """
     v1 = (p1['x'] - p2['x'], p1['y'] - p2['y'])
     v2 = (p3['x'] - p2['x'], p3['y'] - p2['y'])
@@ -126,26 +158,17 @@ def calculate_angle(p1, p2, p3):
     mag2 = math.hypot(v2[0], v2[1])
     if mag1 == 0 or mag2 == 0:
         return 0.0
-    cos_angle = max(min(dot / (mag1 * mag2), 1.0), -1.0)
-    angle = math.degrees(math.acos(cos_angle))
-    return angle
+    cos_ang = max(min(dot / (mag1 * mag2), 1.0), -1.0)
+    return math.degrees(math.acos(cos_ang))
+
 
 def extract_joint_angles(normalized_landmarks):
     """
     Dado lista de 33 landmarks normalizados, calcula ángulos relevantes:
-    - Rodilla (cadera-rodilla-tobillo) para ambas piernas.
-    - Codo (hombro-codo-muñeca) para ambos brazos.
-    Retorna diccionario de ángulos, e.g.: 
-    { 'rodilla_izq': θ, 'rodilla_der': θ, 'codo_izq': θ, 'codo_der': θ }
+      - Rodilla (cadera-rodilla-tobillo) para ambas piernas.
+      - Codo (hombro-codo-muñeca) para ambos brazos.
+    Retorna diccionario: { 'rodilla_izq':…, 'rodilla_der':…, 'codo_izq':…, 'codo_der':… }
     """
-    # Indices según MediaPipe:
-    # Hombros: 11 (izq), 12 (der)
-    # Codos: 13 (izq), 14 (der)
-    # Muñecas: 15 (izq), 16 (der)
-    # Caderas: 23 (izq), 24 (der)
-    # Rodillas: 25 (izq), 26 (der)
-    # Tobillos: 27 (izq), 28 (der)
-
     angles = {}
     # Rodilla izquierda
     angles['rodilla_izq'] = calculate_angle(
@@ -165,42 +188,238 @@ def extract_joint_angles(normalized_landmarks):
     )
     return angles
 
-# ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-# Cálculo de distancias entre puntos clave
+# ---------------------------------------------------------------------------------
+# 5. DISTANCIAS Y VELOCIDAD ANGULAR
+# ---------------------------------------------------------------------------------
 def calculate_distances(normalized_landmarks):
     """
     Calcula distancias en coordenadas normalizadas:
-    - Anchura hombros: |x12 - x11|
-    - Separación pies: |x28 - x27|
-    Retorna un diccionario: { 'anchura_hombros': ..., 'separacion_pies': ... }
+      - Anchura hombros: |x12 - x11|
+      - Separación pies: |x28 - x27|
+    Retorna diccionario {'anchura_hombros':…, 'separacion_pies':…}.
     """
-    # Hombros: 11 izq, 12 der
-    # Tobillos: 27 izq, 28 der
     ancho_hombros = abs(normalized_landmarks[12]['x'] - normalized_landmarks[11]['x'])
     separacion_pies = abs(normalized_landmarks[28]['x'] - normalized_landmarks[27]['x'])
     return {'anchura_hombros': ancho_hombros, 'separacion_pies': separacion_pies}
 
-# Cálculo de velocidad angular
+
 def calculate_angular_velocity(angle_sequence, fps):
     """
     Recibe lista de ángulos por fotograma (en grados) y fps.
-    Retorna lista de velocidades angulares por fotograma (en grados/seg).
+    Retorna lista de velocidades angulares por fotograma (grados/seg).
     """
     velocities = []
     dt = 1.0 / fps
     for i in range(1, len(angle_sequence)):
         velocities.append(abs(angle_sequence[i] - angle_sequence[i-1]) / dt)
-    # La primera velocidad se asume igual a la segunda o 0
+    if not velocities:
+        return []
     return [velocities[0]] + velocities
 
-# Cálculo de simetría entre ángulos de extremidades
+
 def calculate_symmetry(angle_left, angle_right):
     """
     Calcula simetría entre ángulos izquierdo y derecho:
-    sim = 1 - |θizq - θder| / max(θizq, θder)
-    Si ambos son 0, se define sim = 1.
+      sim = 1 - |θizq - θder| / max(θizq, θder)
+    Si ambos son 0, sim = 1.
     """
     if max(angle_left, angle_right) == 0:
         return 1.0
     return 1.0 - abs(angle_left - angle_right) / max(angle_left, angle_right)
+
+
+# ---------------------------------------------------------------------------------
+# 6. EXTRACCIÓN POR LOTE A CSV (subcomando "to_csv")
+# ---------------------------------------------------------------------------------
+def extract_pose_landmarks_to_csv(image_dir, output_csv, visibility_threshold=0.5):
+    """
+    Usa PoseEstimator (que importa mediapipe internamente) para detectar landmarks en cada imagen
+    y guarda un CSV con columnas: image, x0,y0,z0,v0, x1,y1,z1,v1, …, x32,y32,z32,v32.
+    """
+    estimator = PoseEstimator(
+        static_image_mode=True,
+        model_complexity=1,
+        min_detection_confidence=visibility_threshold
+    )
+
+    if not os.path.isdir(image_dir):
+        raise NotADirectoryError(f"El directorio no existe: {image_dir}")
+
+    image_files = sorted([f for f in os.listdir(image_dir) if f.lower().endswith(".jpg")])
+    rows = []
+
+    for img_name in image_files:
+        img_path = os.path.join(image_dir, img_name)
+        img = cv2.imread(img_path)
+        if img is None:
+            print(f"[WARNING] No se pudo leer {img_path}")
+            continue
+
+        landmarks, _ = estimator.estimate_pose(img)
+        row = {"image": img_name}
+        if landmarks:
+            for idx, pt in enumerate(landmarks):
+                v = pt['visibility']
+                if v < visibility_threshold:
+                    row[f"x{idx}"] = float("nan")
+                    row[f"y{idx}"] = float("nan")
+                    row[f"z{idx}"] = float("nan")
+                    row[f"v{idx}"] = float("nan")
+                else:
+                    row[f"x{idx}"] = pt['x']
+                    row[f"y{idx}"] = pt['y']
+                    row[f"z{idx}"] = pt['z']
+                    row[f"v{idx}"] = v
+        else:
+            # Si no detectó pose, rellenamos con NaN
+            for idx in range(33):
+                row[f"x{idx}"] = float("nan")
+                row[f"y{idx}"] = float("nan")
+                row[f"z{idx}"] = float("nan")
+                row[f"v{idx}"] = float("nan")
+
+        rows.append(row)
+
+    estimator.close()
+
+    df = pd.DataFrame(rows)
+    os.makedirs(os.path.dirname(output_csv), exist_ok=True)
+    df.to_csv(output_csv, index=False)
+    print(f"CSV de landmarks guardado en: {output_csv}")
+
+
+# ---------------------------------------------------------------------------------
+# 7. FILTRAR + INTERPOLAR (subcomando "filter_interp")
+# ---------------------------------------------------------------------------------
+def filter_interp_subcommand(args):
+    df = pd.read_csv(args.input_csv)
+    frames = sorted(df["image"].unique())
+    landmarks_sequence = []
+
+    for img_name in frames:
+        row = df[df["image"] == img_name].iloc[0]
+        pts = []
+        nan_count = 0
+        for i in range(33):
+            v = row[f"v{i}"]
+            if pd.isna(v) or v < args.min_confidence:
+                nan_count += 1
+                pts.append({'x': 0.0, 'y': 0.0, 'visibility': 0.0})
+            else:
+                pts.append({'x': row[f"x{i}"], 'y': row[f"y{i}"], 'visibility': v})
+        if nan_count / 33 > 0.2:
+            landmarks_sequence.append(None)
+        else:
+            landmarks_sequence.append(pts)
+
+    filtered = filter_and_interpolate_keypoints(landmarks_sequence, min_confidence=args.min_confidence)
+
+    # Convierte la lista 'filtered' en un array de dtype=object
+    filtered_array = np.array(filtered, dtype=object)
+
+    # Asegúrate de que el directorio de salida existe
+    os.makedirs(os.path.dirname(args.output_npy), exist_ok=True)
+
+    # Guarda el array de objetos
+    np.save(args.output_npy, filtered_array)
+    print(f"Secuencia filtrada/interpolada guardada en: {args.output_npy}")
+
+
+# ---------------------------------------------------------------------------------
+# 8. CALCULAR MÉTRICAS (subcomando "metrics")
+# ---------------------------------------------------------------------------------
+def metrics_subcommand(args):
+    seq = np.load(args.input_npy, allow_pickle=True)
+    all_metrics = []
+
+    for idx, lm in enumerate(seq):
+        row = {"frame_idx": idx}
+        if lm is None:
+            row.update({
+                'rodilla_izq': float("nan"),
+                'rodilla_der': float("nan"),
+                'codo_izq': float("nan"),
+                'codo_der': float("nan"),
+                'anchura_hombros': float("nan"),
+                'separacion_pies': float("nan"),
+            })
+        else:
+            norm = normalize_landmarks(lm)
+            angles = extract_joint_angles(norm)
+            dists = calculate_distances(norm)
+            row.update(angles)
+            row.update(dists)
+        all_metrics.append(row)
+
+    dfm = pd.DataFrame(all_metrics)
+
+    rod_izq_seq = dfm["rodilla_izq"].fillna(0).tolist()
+    rod_der_seq = dfm["rodilla_der"].fillna(0).tolist()
+    codo_izq_seq = dfm["codo_izq"].fillna(0).tolist()
+    codo_der_seq = dfm["codo_der"].fillna(0).tolist()
+
+    vel_rod_izq = calculate_angular_velocity(rod_izq_seq, args.fps)
+    vel_rod_der = calculate_angular_velocity(rod_der_seq, args.fps)
+    vel_codo_izq = calculate_angular_velocity(codo_izq_seq, args.fps)
+    vel_codo_der = calculate_angular_velocity(codo_der_seq, args.fps)
+
+    dfm["vel_ang_rod_izq"] = vel_rod_izq
+    dfm["vel_ang_rod_der"] = vel_rod_der
+    dfm["vel_ang_codo_izq"] = vel_codo_izq
+    dfm["vel_ang_codo_der"] = vel_codo_der
+
+    sim_rod = [calculate_symmetry(a, b) for a, b in zip(rod_izq_seq, rod_der_seq)]
+    sim_codo = [calculate_symmetry(a, b) for a, b in zip(codo_izq_seq, codo_der_seq)]
+    dfm["sim_rodilla"] = sim_rod
+    dfm["sim_codo"]    = sim_codo
+
+    os.makedirs(os.path.dirname(args.output_metrics), exist_ok=True)
+    dfm.to_csv(args.output_metrics, index=False)
+    print(f"Métricas calculadas y guardadas en: {args.output_metrics}")
+
+
+# ---------------------------------------------------------------------------------
+# 9. CLI CON SUBCOMANDOS
+# ---------------------------------------------------------------------------------
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Extrae landmarks de pose, filtra, normaliza y calcula métricas."
+    )
+    subparsers = parser.add_subparsers(dest="command")
+
+    # a) Subcomando: exportar raw landmarks a CSV
+    parser_csv = subparsers.add_parser("to_csv", help="Extraer landmarks raw a CSV")
+    parser_csv.add_argument("--input_dir", required=True, help="Dir con imágenes (.jpg)")
+    parser_csv.add_argument("--output_csv", required=True, help="Ruta al CSV de salida")
+    parser_csv.add_argument("--visibility_threshold", type=float, default=0.5)
+
+    # b) Subcomando: filtrar e interpolar landmarks desde CSV existente
+    parser_filter = subparsers.add_parser("filter_interp", help="Filtrar e interpolar landmarks desde CSV")
+    parser_filter.add_argument("--input_csv", required=True, help="CSV con raw landmarks")
+    parser_filter.add_argument("--output_npy", required=True, help="Guardar secuencia filtrada en .npy")
+    parser_filter.add_argument("--min_confidence", type=float, default=0.5)
+
+    # c) Subcomando: calcular ángulos y distancias desde secuencia normalizada
+    parser_metrics = subparsers.add_parser("metrics", help="Calcular ángulos/distancias desde secuencia normalizada")
+    parser_metrics.add_argument("--input_npy", required=True, help="Secuencia filtrada (.npy)")
+    parser_metrics.add_argument("--output_metrics", required=True, help="CSV con métricas por frame")
+    parser_metrics.add_argument("--fps", type=float, required=True, help="FPS del vídeo original")
+
+    args = parser.parse_args()
+
+    if args.command == "to_csv":
+        extract_pose_landmarks_to_csv(
+            image_dir=args.input_dir,
+            output_csv=args.output_csv,
+            visibility_threshold=args.visibility_threshold
+        )
+
+    elif args.command == "filter_interp":
+        filter_interp_subcommand(args)
+
+    elif args.command == "metrics":
+        metrics_subcommand(args)
+
+    else:
+        parser.print_help()
