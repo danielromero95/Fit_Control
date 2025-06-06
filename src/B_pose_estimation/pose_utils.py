@@ -7,65 +7,135 @@ import math
 import argparse
 import pandas as pd
 
-# --- NOTA: Ya no importamos mediapipe a nivel global ---
-# from mediapipe.python.solutions import pose as mp_pose_module
-# from mediapipe.python.solutions import drawing_utils as mp_drawing_utils
+# ---------------------------------------------------------------------------------
+# 1. CLASE CroppedPoseEstimator (importa mediapipe SOLO si se instancia)
+# ---------------------------------------------------------------------------------
+#
+# Este wrapper hace dos pasadas:
+#   1) Detecta pose en la imagen entera para obtener landmarks.
+#   2) Crea un recuadro (crop) en torno a esos landmarks, redimensiona y re-detecta pose
+#      en el recorte, para obtener landmarks “centrados”.
+#
+# Devolvemos:
+#   - landmarks_crop: lista de 33 dicts {'x','y','z','visibility'}, en coordenadas
+#                      RELATIVAS al recorte (normalizadas en [0,1] dado el nuevo tamaño).
+#   - annotated_crop: la imagen recortada (en BGR) con los landmarks dibujados sobre ella.
+#
+class CroppedPoseEstimator:
+    def __init__(self,
+                 static_image_mode=False,
+                 model_complexity=1,
+                 min_detection_confidence=0.5,
+                 crop_margin=0.15,
+                 target_size=(256, 256)):
+        """
+        crop_margin: porcentaje extra que se añade al bounding-box (p. ej. 0.15 → 15% de margen).
+        target_size: tamaño final del recorte (width, height), p. ej. (256,256).
+        """
+        self.crop_margin = crop_margin
+        self.target_size = target_size  # (ancho, alto) del recorte final
 
-# ---------------------------------------------------------------------------------
-# 1. CLASE PoseEstimator (importa mediapipe SOLO si se instancia)
-# ---------------------------------------------------------------------------------
-class PoseEstimator:
-    """
-    Encapsula MediaPipe Pose (solo 'mediapipe.python.solutions.pose') para detección.
-    La importación de MediaPipe se hace en el constructor, de manera que si
-    nunca se usa este objeto (e.g. en filter_interp/metrics), no falla.
-    """
-    def __init__(self, static_image_mode=False, model_complexity=1, min_detection_confidence=0.5):
-        # Importamos aquí para no exigir mediapipe si nunca se usa este constructor:
+        # Importamos MediaPipe aquí para no exigirlo si nunca se instancia este objeto
         from mediapipe.python.solutions import pose as mp_pose_module
         from mediapipe.python.solutions import drawing_utils as mp_drawing_utils
 
+        # Guardamos referencias al módulo y utilidades de dibujo
         self.mp_pose_module = mp_pose_module
         self.mp_drawing_utils = mp_drawing_utils
 
-        # Creamos el objeto Pose
-        self.pose = self.mp_pose_module.Pose(
+        # Creamos dos instancias de Pose:
+        #  - Una para detectar en la imagen completa (pose_full)
+        #  - Otra para detectar en el recorte redimensionado (pose_crop)
+        self.pose_full = self.mp_pose_module.Pose(
+            static_image_mode=static_image_mode,
+            model_complexity=model_complexity,
+            min_detection_confidence=min_detection_confidence
+        )
+        self.pose_crop = self.mp_pose_module.Pose(
             static_image_mode=static_image_mode,
             model_complexity=model_complexity,
             min_detection_confidence=min_detection_confidence
         )
 
-    def estimate_pose(self, image):
+    def estimate_and_crop(self, image_bgr):
         """
-        Recibe `image` en formato BGR (OpenCV), retorna:
-          - landmarks: lista de 33 dicts {'x','y','z','visibility'} o None si no detecta.
-          - annotated_image: copia de imagen con landmarks dibujados (BGR).
+        1) Detecta pose en toda la imagen → obtiene landmarks_full (normalizados).
+        2) Si no hay landmarks, retorna (None, image_bgr).
+        3) Convierte landmarks_full a coordenadas en píxeles.
+        4) Construye bounding-box (BB) con margen y recorta la región que contiene la persona.
+        5) Redimensiona el recorte a self.target_size y vuelve a estimar pose en el recorte.
+        6) Retorna (landmarks_crop, annotated_crop):
+           - landmarks_crop: lista de 33 dicts {'x','y','z','visibility'} normalizados en [0,1] relativos al recorte.
+           - annotated_crop: imagen recortada (target_size) en BGR con los landmarks dibujados.
         """
-        img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        results = self.pose.process(img_rgb)
+        h0, w0 = image_bgr.shape[:2]
 
-        if not results.pose_landmarks:
-            return None, image
+        # ------------------- PASO 1: detectar pose en toda la imagen -------------------
+        img_rgb_full = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
+        results_full = self.pose_full.process(img_rgb_full)
+        if not results_full.pose_landmarks:
+            # Si no detecta persona, devolvemos None para landmarks y la imagen entera sin modificación
+            return None, image_bgr
 
-        landmarks = []
-        for lm in results.pose_landmarks.landmark:
-            landmarks.append({
-                'x': lm.x,
-                'y': lm.y,
-                'z': lm.z,
-                'visibility': lm.visibility
-            })
+        # ---------------- PASO 2: convertir landmarks normalizados en pixeles ----------------
+        lms_full = results_full.pose_landmarks.landmark  # lista de 33 landmarks
+        # Array de forma (33, 2): [(x0_pix, y0_pix), (x1_pix, y1_pix), ...]
+        xy_full = np.array([[lm.x * w0, lm.y * h0] for lm in lms_full])
 
-        annotated = image.copy()
-        self.mp_drawing_utils.draw_landmarks(
-            annotated,
-            results.pose_landmarks,
-            self.mp_pose_module.POSE_CONNECTIONS
-        )
-        return landmarks, annotated
+        # ---------------- PASO 3: construir bounding-box mínimo que encierra todos los puntos ----------------
+        x_min, y_min = xy_full.min(axis=0)
+        x_max, y_max = xy_full.max(axis=0)
+
+        # Añadimos un poco de margen (% del ancho/alto del BB) para no recortar demasiado justo
+        dx = (x_max - x_min) * self.crop_margin
+        dy = (y_max - y_min) * self.crop_margin
+
+        # Clamp al rango de la imagen original
+        x1 = max(int(x_min - dx), 0)
+        y1 = max(int(y_min - dy), 0)
+        x2 = min(int(x_max + dx), w0 - 1)
+        y2 = min(int(y_max + dy), h0 - 1)
+
+        # --------------------- PASO 4: recortar la región que contiene la persona ---------------------
+        crop = image_bgr[y1:y2, x1:x2]  # subimagen en BGR
+        if crop.size == 0:
+            # En caso extremo (BB inválido), devolvemos la imagen completa sin crop
+            return None, image_bgr
+
+        # ---------------- PASO 5: redimensionar el recorte y volver a estimar pose allí ----------------
+        w_tgt, h_tgt = self.target_size
+        crop_resized = cv2.resize(crop, (w_tgt, h_tgt), interpolation=cv2.INTER_LINEAR)
+        crop_rgb = cv2.cvtColor(crop_resized, cv2.COLOR_BGR2RGB)
+        results_crop = self.pose_crop.process(crop_rgb)
+
+        landmarks_crop = []
+        annotated_crop = crop_resized.copy()
+
+        if results_crop.pose_landmarks:
+            # Recojo los landmarks normalizados (0..1) relativos al crop_redimensionado
+            for lm in results_crop.pose_landmarks.landmark:
+                landmarks_crop.append({
+                    'x': lm.x,
+                    'y': lm.y,
+                    'z': lm.z,
+                    'visibility': lm.visibility
+                })
+            # Dibujar los landmarks sobre la copia del recorte
+            self.mp_drawing_utils.draw_landmarks(
+                annotated_crop,
+                results_crop.pose_landmarks,
+                self.mp_pose_module.POSE_CONNECTIONS
+            )
+        else:
+            # Si no detecta pose en el recorte, devolvemos landmarks_crop=None y el recorte sin marcar
+            landmarks_crop = None
+
+        return landmarks_crop, annotated_crop
 
     def close(self):
-        self.pose.close()
+        self.pose_full.close()
+        self.pose_crop.close()
+
 
 
 # ---------------------------------------------------------------------------------
@@ -144,7 +214,7 @@ def normalize_landmarks(landmarks):
 
 
 # ---------------------------------------------------------------------------------
-# 4. ÁNGULOS DE ARTICULACIONES
+# 4. CÁLCULO DE ÁNGULOS DE ARTICULACIONES
 # ---------------------------------------------------------------------------------
 def calculate_angle(p1, p2, p3):
     """
@@ -153,7 +223,7 @@ def calculate_angle(p1, p2, p3):
     """
     v1 = (p1['x'] - p2['x'], p1['y'] - p2['y'])
     v2 = (p3['x'] - p2['x'], p3['y'] - p2['y'])
-    dot = v1[0]*v2[0] + v1[1]*v2[1]
+    dot = v1[0] * v2[0] + v1[1] * v2[1]
     mag1 = math.hypot(v1[0], v1[1])
     mag2 = math.hypot(v2[0], v2[1])
     if mag1 == 0 or mag2 == 0:
@@ -190,7 +260,7 @@ def extract_joint_angles(normalized_landmarks):
 
 
 # ---------------------------------------------------------------------------------
-# 5. DISTANCIAS Y VELOCIDAD ANGULAR
+# 5. CÁLCULO DE DISTANCIAS Y VELOCIDAD ANGULAR
 # ---------------------------------------------------------------------------------
 def calculate_distances(normalized_landmarks):
     """
@@ -212,7 +282,7 @@ def calculate_angular_velocity(angle_sequence, fps):
     velocities = []
     dt = 1.0 / fps
     for i in range(1, len(angle_sequence)):
-        velocities.append(abs(angle_sequence[i] - angle_sequence[i-1]) / dt)
+        velocities.append(abs(angle_sequence[i] - angle_sequence[i - 1]) / dt)
     if not velocities:
         return []
     return [velocities[0]] + velocities
@@ -230,17 +300,24 @@ def calculate_symmetry(angle_left, angle_right):
 
 
 # ---------------------------------------------------------------------------------
-# 6. EXTRACCIÓN POR LOTE A CSV (subcomando "to_csv")
+# 6. EXTRACCIÓN POR LOTE A CSV (subcomando "to_csv"), USANDO CroppedPoseEstimator
 # ---------------------------------------------------------------------------------
 def extract_pose_landmarks_to_csv(image_dir, output_csv, visibility_threshold=0.5):
     """
-    Usa PoseEstimator (que importa mediapipe internamente) para detectar landmarks en cada imagen
-    y guarda un CSV con columnas: image, x0,y0,z0,v0, x1,y1,z1,v1, …, x32,y32,z32,v32.
+    Usa CroppedPoseEstimator para detectar landmarks en cada imagen de image_dir
+    y guarda un CSV con columnas:
+      image, x0,y0,z0,v0, x1,y1,z1,v1, …, x32,y32,z32,v32.
+
+    NOTA: ahora el detector se hace “en crop” centrado en la persona, gracias a
+    CroppedPoseEstimator. Aunque internamente el wrapper primero detecta en la
+    imagen completa y luego recorta, al usuario final le basta con llamar aquí.
     """
-    estimator = PoseEstimator(
+    estimator = CroppedPoseEstimator(
         static_image_mode=True,
         model_complexity=1,
-        min_detection_confidence=visibility_threshold
+        min_detection_confidence=visibility_threshold,
+        crop_margin=0.15,
+        target_size=(256, 256)
     )
 
     if not os.path.isdir(image_dir):
@@ -256,12 +333,15 @@ def extract_pose_landmarks_to_csv(image_dir, output_csv, visibility_threshold=0.
             print(f"[WARNING] No se pudo leer {img_path}")
             continue
 
-        landmarks, _ = estimator.estimate_pose(img)
+        # Usamos el método estimate_and_crop para obtener landmarks centrados en el recorte
+        landmarks, _annotated_crop = estimator.estimate_and_crop(img)
+
         row = {"image": img_name}
         if landmarks:
             for idx, pt in enumerate(landmarks):
                 v = pt['visibility']
-                if v < visibility_threshold:
+                if v < visibility_threshold or math.isnan(v):
+                    # Si la visibilidad es baja o NaN, ponemos NaN en x,y,z,v
                     row[f"x{idx}"] = float("nan")
                     row[f"y{idx}"] = float("nan")
                     row[f"z{idx}"] = float("nan")
@@ -272,7 +352,7 @@ def extract_pose_landmarks_to_csv(image_dir, output_csv, visibility_threshold=0.
                     row[f"z{idx}"] = pt['z']
                     row[f"v{idx}"] = v
         else:
-            # Si no detectó pose, rellenamos con NaN
+            # Si no detectó pose (landmarks es None), rellenar con NaN
             for idx in range(33):
                 row[f"x{idx}"] = float("nan")
                 row[f"y{idx}"] = float("nan")
@@ -315,13 +395,13 @@ def filter_interp_subcommand(args):
 
     filtered = filter_and_interpolate_keypoints(landmarks_sequence, min_confidence=args.min_confidence)
 
-    # Convierte la lista 'filtered' en un array de dtype=object
+    # Convertimos la lista 'filtered' en un array de dtype=object
     filtered_array = np.array(filtered, dtype=object)
 
-    # Asegúrate de que el directorio de salida existe
+    # Nos aseguramos de que el directorio de salida existe
     os.makedirs(os.path.dirname(args.output_npy), exist_ok=True)
 
-    # Guarda el array de objetos
+    # Guardamos el array de objetos
     np.save(args.output_npy, filtered_array)
     print(f"Secuencia filtrada/interpolada guardada en: {args.output_npy}")
 
@@ -384,12 +464,12 @@ def metrics_subcommand(args):
 # ---------------------------------------------------------------------------------
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Extrae landmarks de pose, filtra, normaliza y calcula métricas."
+        description="Extrae landmarks de pose (centrado), filtra, normaliza y calcula métricas."
     )
     subparsers = parser.add_subparsers(dest="command")
 
-    # a) Subcomando: exportar raw landmarks a CSV
-    parser_csv = subparsers.add_parser("to_csv", help="Extraer landmarks raw a CSV")
+    # a) Subcomando: exportar raw landmarks a CSV (ahora centrado en tu cuerpo)
+    parser_csv = subparsers.add_parser("to_csv", help="Extraer landmarks raw a CSV (centrado en persona)")
     parser_csv.add_argument("--input_dir", required=True, help="Dir con imágenes (.jpg)")
     parser_csv.add_argument("--output_csv", required=True, help="Ruta al CSV de salida")
     parser_csv.add_argument("--visibility_threshold", type=float, default=0.5)
@@ -423,3 +503,4 @@ if __name__ == "__main__":
 
     else:
         parser.print_help()
+
