@@ -6,14 +6,48 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QLabel, QPushButton,
     QFileDialog, QSpinBox, QComboBox, QCheckBox, QVBoxLayout,
     QTabWidget, QMessageBox, QProgressBar, QFormLayout, QHBoxLayout,
-    QLineEdit, QGraphicsOpacityEffect
+    QLineEdit
 )
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QPropertyAnimation
+from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QPixmap, QImage
-from frame_extraction import extract_and_preprocess_frames
 
-# Configure file logging
-LOG_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'logs'))
+
+_project_root = None
+
+def find_project_root():
+    """
+    Encuentra la ruta raíz del proyecto de forma robusta.
+    - En modo "congelado" (despliegue), usa la ruta del ejecutable.
+    - En modo normal (desarrollo), busca hacia arriba la carpeta 'gym-performance-analysis'.
+    """
+    global _project_root
+    if _project_root:
+        return _project_root
+
+    if getattr(sys, 'frozen', False):
+        base_path = os.path.dirname(sys.executable)
+    else:
+        path = os.path.abspath(__file__)
+        while os.path.basename(path) != 'gym-performance-analysis':
+            parent_path = os.path.dirname(path)
+            if parent_path == path:
+                base_path = os.getcwd()
+                print(f"ADVERTENCIA: Raíz 'gym-performance-analysis' no encontrada. Usando CWD: {base_path}")
+                break
+            path = parent_path
+        else:
+            base_path = path
+    
+    _project_root = base_path
+    return _project_root
+
+# --- Configuración de Rutas y Logging ---
+
+# Usa la función para definir las rutas base
+PROJECT_ROOT = find_project_root()
+THEMES_DIR   = os.path.join(PROJECT_ROOT, 'themes')
+LOG_DIR      = os.path.join(PROJECT_ROOT, 'logs') # Para despliegue, considera una carpeta de datos de usuario
+
 os.makedirs(LOG_DIR, exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
@@ -24,16 +58,20 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+logger.info(f"Project root set to: {PROJECT_ROOT}")
 
+# Cargamos el stylesheet por defecto (puede ser 'dark.qss' o 'light.qss')
 def load_stylesheet(app, dark=False):
-    """Carga light.qss o dark.qss desde este directorio."""
     qss_file = 'dark.qss' if dark else 'light.qss'
-    path = os.path.join(os.path.dirname(__file__), qss_file)
+    path = os.path.join(THEMES_DIR, qss_file)
+    if not os.path.exists(path):
+        logger.warning(f"Stylesheet not found at {path}")
+        return
     try:
         with open(path, 'r') as f:
             app.setStyleSheet(f.read())
     except Exception as e:
-        logger.warning(f"No se pudo cargar stylesheet {qss_file}: {e}")
+        logger.warning(f"Could not load stylesheet {qss_file}: {e}")
 
 class DragDropWidget(QWidget):
     file_dropped = pyqtSignal(str)
@@ -66,7 +104,6 @@ class DragDropWidget(QWidget):
         for url in event.mimeData().urls():
             path = url.toLocalFile()
             if os.path.isfile(path):
-                # Emitimos la señal, _video_selected se encargará de resetear y mostrar thumbnail
                 self.file_dropped.emit(path)
                 break
 
@@ -127,7 +164,7 @@ class WorkerThread(QThread):
                     cv2.imwrite(fname, frame)
                     saved += 1
                 idx += 1
-                if idx % step == 0:
+                if idx % step == 0 and frame_count > 0:
                     self.progress_signal.emit(int(idx / frame_count * 100))
 
             cap.release()
@@ -144,12 +181,14 @@ class WorkerThread(QThread):
             logger.exception("WorkerThread error")
             self.error_signal.emit(str(e))
 
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Gym Performance Analyzer")
         self.resize(700, 600)
-        load_stylesheet(QApplication.instance() or QApplication(sys.argv), dark=False)
+        self.video_path = None
+        self.output_folder = None
         self._init_ui()
 
     def _init_ui(self):
@@ -163,7 +202,6 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(widget)
 
         self.drag_widget = DragDropWidget()
-        # Conectamos la misma señal tanto para drag como para el botón
         self.drag_widget.file_dropped.connect(self._video_selected)
         layout.addWidget(self.drag_widget)
 
@@ -184,10 +222,10 @@ class MainWindow(QMainWindow):
     def _settings_tab(self):
         widget = QWidget()
         layout = QFormLayout(widget)
-        base = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-
-        # Carpeta base de salida
-        self.out_edit = QLineEdit(os.path.join(base, 'data', 'processed', 'frames'))
+        
+        # Usa PROJECT_ROOT para una ruta por defecto más inteligente
+        default_output = os.path.join(PROJECT_ROOT, 'data', 'processed', 'frames')
+        self.out_edit = QLineEdit(default_output)
         dir_btn = QPushButton("...")
         dir_btn.clicked.connect(self._open_dir)
         h = QHBoxLayout(); h.addWidget(self.out_edit); h.addWidget(dir_btn)
@@ -218,14 +256,14 @@ class MainWindow(QMainWindow):
         load_stylesheet(QApplication.instance(), dark=(state == Qt.Checked))
 
     def _video_selected(self, path):
-        # Se invoca tanto desde drag como desde botón
         self.video_path = path
         base_output = self.out_edit.text().strip()
         name = os.path.splitext(os.path.basename(path))[0]
         self.output_folder = os.path.join(base_output, name)
-
-        # Limpiamos y mostramos thumbnail
-        self.drag_widget.clear()
+        
+        # MEJORA: No llames a clear() para evitar el parpadeo.
+        # self.drag_widget.clear() 
+        
         cap = cv2.VideoCapture(path)
         ret, frame = cap.read()
         cap.release()
@@ -233,38 +271,40 @@ class MainWindow(QMainWindow):
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             h, w, _ = frame.shape
             dw, dh = self.drag_widget.width(), self.drag_widget.height()
+            
+            # Evita división por cero si el widget no es visible aún
+            if w == 0 or h == 0 or dw == 0 or dh == 0:
+                self.process_btn.setEnabled(True)
+                return
+
             scale = min(dw / w, dh / h)
             thumb = cv2.resize(frame, (int(w * scale), int(h * scale)))
-            img = QImage(
-                thumb.data,
-                thumb.shape[1],
-                thumb.shape[0],
-                thumb.strides[0],
-                QImage.Format_RGB888
-            )
+            img = QImage(thumb.data, thumb.shape[1], thumb.shape[0], thumb.strides[0], QImage.Format_RGB888)
             pix = QPixmap.fromImage(img)
             self.drag_widget.show_thumbnail(pix)
 
         self.process_btn.setEnabled(True)
+        self.progress.setValue(0)
+
 
     def _open_file(self):
-        base = os.path.abspath(os.path.join(os.path.dirname(__file__),
-            '..', '..', 'data', 'raw', 'own_videos'))
+        # Usa PROJECT_ROOT para una ruta por defecto más inteligente
+        default_input = os.path.join(PROJECT_ROOT, 'data', 'raw')
         file, _ = QFileDialog.getOpenFileName(
-            self, "Seleccionar vídeo", base,
-            "Vídeos (*.mp4 *.mov *.avi *.mkv)"
-        )
+            self, "Seleccionar vídeo", default_input, "Vídeos (*.mp4 *.mov *.avi *.mkv)")
         if file:
             self._video_selected(file)
 
     def _open_dir(self):
-        d = QFileDialog.getExistingDirectory(
-            self, "Seleccionar carpeta", self.out_edit.text()
-        )
+        d = QFileDialog.getExistingDirectory(self, "Seleccionar carpeta", self.out_edit.text())
         if d:
             self.out_edit.setText(d)
 
     def _start(self):
+        if not self.output_folder:
+            QMessageBox.critical(self, "Error", "No se ha seleccionado ningún vídeo o la ruta de salida es inválida.")
+            return
+            
         os.makedirs(self.output_folder, exist_ok=True)
         params = {
             'video_path': self.video_path,
@@ -279,9 +319,7 @@ class MainWindow(QMainWindow):
         self.worker.progress_signal.connect(self.progress.setValue)
         self.worker.error_signal.connect(lambda e: QMessageBox.critical(self, "Error", e))
         self.worker.finished_signal.connect(lambda m: QMessageBox.information(
-            self, "Finalizado",
-            f"Procesados {m['frames_saved']} frames\nSalida: {self.output_folder}"
-        ))
+            self, "Finalizado", f"Procesados {m['frames_saved']} frames\nSalida: {self.output_folder}"))
         self.process_btn.setEnabled(False)
         self.worker.start()
 
