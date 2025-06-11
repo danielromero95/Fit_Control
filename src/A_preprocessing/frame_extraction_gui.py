@@ -1,11 +1,10 @@
 import sys
 import os
-import logging
 import cv2
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QLabel, QPushButton, QLineEdit,
+    QApplication, QMainWindow, QWidget, QLabel, QPushButton,
     QFileDialog, QSpinBox, QComboBox, QCheckBox, QVBoxLayout,
-    QHBoxLayout, QTabWidget, QMessageBox, QProgressBar, QFormLayout
+    QTabWidget, QMessageBox, QProgressBar, QFormLayout, QHBoxLayout, QLineEdit
 )
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QPixmap, QImage
@@ -18,13 +17,15 @@ class DragDropWidget(QWidget):
     def __init__(self):
         super().__init__()
         self.setAcceptDrops(True)
-        self.label = QLabel("Arrastra y suelta tu vídeo aquí")
+        self.default_text = "Arrastra o selecciona tu vídeo aquí"
+        self.label = QLabel(self.default_text, self)
         self.label.setAlignment(Qt.AlignCenter)
-        layout = QVBoxLayout()
+        self.label.setStyleSheet("color: #777; font-size: 16px;")
+        layout = QVBoxLayout(self)
         layout.addWidget(self.label)
         self.setLayout(layout)
         self.setStyleSheet(
-            "QWidget { border: 2px dashed #aaa; border-radius: 8px; } QLabel { color: #555; font-size: 16px; }"
+            "QWidget { border: 2px dashed #aaa; border-radius: 8px; }"
         )
 
     def dragEnterEvent(self, event):
@@ -39,6 +40,14 @@ class DragDropWidget(QWidget):
             if os.path.isfile(path):
                 self.file_dropped.emit(path)
                 break
+
+    def show_thumbnail(self, pixmap: QPixmap):
+        self.label.setPixmap(pixmap)
+        self.label.setScaledContents(True)
+
+    def clear(self):
+        self.label.clear()
+        self.label.setText(self.default_text)
 
 
 class WorkerThread(QThread):
@@ -76,15 +85,19 @@ class WorkerThread(QThread):
                 if not ret:
                     break
                 if idx % self.sample_rate == 0:
+                    # rotate
                     if self.rotate == 90:
                         frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
                     elif self.rotate == 180:
                         frame = cv2.rotate(frame, cv2.ROTATE_180)
                     elif self.rotate == 270:
                         frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
+                    # resize
                     frame = cv2.resize(frame, (self.target_width, self.target_height), interpolation=cv2.INTER_AREA)
+                    # normalize
                     if self.normalize:
                         frame = (frame.astype('float32') / 255.0 * 255.0).astype('uint8')
+                    # save
                     fname = os.path.join(self.output_dir, f"frame_{saved+1:04d}.jpg")
                     cv2.imwrite(fname, frame)
                     saved += 1
@@ -94,7 +107,12 @@ class WorkerThread(QThread):
                     self.progress_signal.emit(percent)
             cap.release()
             self.progress_signal.emit(100)
-            metadata = {'fps': fps, 'frame_count': frame_count, 'duration': frame_count/fps if fps else 0, 'frames_saved': saved}
+            metadata = {
+                'fps': fps,
+                'frame_count': frame_count,
+                'duration': frame_count/fps if fps else 0,
+                'frames_saved': saved
+            }
             self.finished_signal.emit(metadata)
         except Exception as e:
             self.error_signal.emit(str(e))
@@ -109,137 +127,123 @@ class MainWindow(QMainWindow):
 
     def _init_ui(self):
         tabs = QTabWidget()
-        tabs.addTab(self._build_home_tab(), "Inicio")
-        tabs.addTab(self._build_settings_tab(), "Ajustes")
+        tabs.addTab(self._home_tab(), "Inicio")
+        tabs.addTab(self._settings_tab(), "Ajustes")
         self.setCentralWidget(tabs)
 
-    def _build_home_tab(self):
+    def _home_tab(self):
         widget = QWidget()
-        layout = QVBoxLayout()
+        layout = QVBoxLayout(widget)
 
+        # Drag & Drop area
         self.drag_widget = DragDropWidget()
-        self.drag_widget.file_dropped.connect(self._on_video_selected)
+        self.drag_widget.file_dropped.connect(self._video_selected)
         layout.addWidget(self.drag_widget)
 
-        btn_select = QPushButton("Seleccionar vídeo")
-        btn_select.clicked.connect(self._browse_video)
-        layout.addWidget(btn_select)
+        # Select button
+        btn = QPushButton("Seleccionar vídeo")
+        btn.clicked.connect(self._open_file)
+        layout.addWidget(btn)
 
-        # Thumbnail preview
-        self.thumbnail = QLabel()
-        self.thumbnail.setAlignment(Qt.AlignCenter)
-        self.thumbnail.setFixedSize(320, 180)
-        layout.addWidget(self.thumbnail)
+        # Progress bar
+        self.progress = QProgressBar()
+        self.progress.setValue(0)
+        layout.addWidget(self.progress)
 
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setValue(0)
-        layout.addWidget(self.progress_bar)
+        # Process video button
+        self.process_btn = QPushButton("Procesar vídeo")
+        self.process_btn.setEnabled(False)
+        self.process_btn.clicked.connect(self._start)
+        layout.addWidget(self.process_btn)
 
-        self.btn_process = QPushButton("Procesar vídeo")
-        self.btn_process.clicked.connect(self._start_processing)
-        self.btn_process.setEnabled(False)
-        layout.addWidget(self.btn_process)
-
-        widget.setLayout(layout)
         return widget
 
-    def _build_settings_tab(self):
+    def _settings_tab(self):
         widget = QWidget()
-        layout = QFormLayout()
-
+        layout = QFormLayout(widget)
         base = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-        self.edit_output = QLineEdit(os.path.join(base, 'data', 'processed', 'frames'))
-        btn_out = QPushButton("...")
-        btn_out.clicked.connect(self._browse_output)
-        hb_out = QHBoxLayout()
-        hb_out.addWidget(self.edit_output)
-        hb_out.addWidget(btn_out)
-        layout.addRow("Carpeta de salida:", hb_out)
 
-        self.spin_sample = QSpinBox()
-        self.spin_sample.setMinimum(1)
-        self.spin_sample.setValue(3)
-        layout.addRow("Sample Rate:", self.spin_sample)
+        # Output base folder
+        self.out_edit = QLineEdit(os.path.join(base, 'data', 'processed', 'frames'))
+        btn = QPushButton("...")
+        btn.clicked.connect(self._open_dir)
+        h = QHBoxLayout(); h.addWidget(self.out_edit); h.addWidget(btn)
+        layout.addRow("Carpeta salida:", h)
 
-        self.combo_rotate = QComboBox()
-        self.combo_rotate.addItems(["0","90","180","270"])
-        self.combo_rotate.setCurrentText("90")
-        layout.addRow("Rotación (°):", self.combo_rotate)
+        # Sample rate
+        self.sample = QSpinBox(); self.sample.setMinimum(1); self.sample.setValue(3)
+        layout.addRow("Sample Rate:", self.sample)
 
-        self.spin_width = QSpinBox()
-        self.spin_width.setRange(16,4096)
-        self.spin_width.setValue(256)
-        layout.addRow("Ancho (px):", self.spin_width)
+        # Rotation
+        self.rotate = QComboBox(); self.rotate.addItems(["0","90","180","270"]); self.rotate.setCurrentText("90")
+        layout.addRow("Rotación (°):", self.rotate)
 
-        self.spin_height = QSpinBox()
-        self.spin_height.setRange(16,4096)
-        self.spin_height.setValue(256)
-        layout.addRow("Alto (px):", self.spin_height)
+        # Width/Height
+        self.wi = QSpinBox(); self.wi.setRange(16,4096); self.wi.setValue(256)
+        self.he = QSpinBox(); self.he.setRange(16,4096); self.he.setValue(256)
+        layout.addRow("Ancho (px):", self.wi)
+        layout.addRow("Alto (px):", self.he)
 
-        self.chk_norm = QCheckBox("Normalizar")
-        self.chk_norm.setToolTip("Escala los valores de píxel de 0–255 a 0.0–1.0 antes de guardar.")
-        self.chk_norm.setChecked(True)
-        layout.addRow(self.chk_norm)
+        # Normalize
+        self.norm = QCheckBox("Normalizar")
+        self.norm.setChecked(True)
+        self.norm.setToolTip("Escala valor píxel de 0–255 a 0–1 antes de guardar.")
+        layout.addRow(self.norm)
 
-        widget.setLayout(layout)
         return widget
 
-    def _on_video_selected(self, path):
+    def _video_selected(self, path):
         self.video_path = path
-        self.drag_widget.label.setText(os.path.basename(path))
+        # create output subfolder named after video file (no extension)
+        base_output = self.out_edit.text().strip()
+        name = os.path.splitext(os.path.basename(path))[0]
+        self.output_folder = os.path.join(base_output, name)
+        # ensure fresh drag_widget
         cap = cv2.VideoCapture(path)
         ret, frame = cap.read()
         cap.release()
         if ret:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            h, w, ch = frame.shape
-            ratio = min(self.thumbnail.width()/w, self.thumbnail.height()/h)
-            thumb = cv2.resize(frame, (int(w*ratio), int(h*ratio)))
-            image = QImage(thumb.data, thumb.shape[1], thumb.shape[0], thumb.strides[0], QImage.Format_RGB888)
-            pixmap = QPixmap.fromImage(image)
-            self.thumbnail.setPixmap(pixmap)
-        self.btn_process.setEnabled(True)
+            h, w, _ = frame.shape
+            dw, dh = self.drag_widget.size().width(), self.drag_widget.size().height()
+            scale = min(dw/w, dh/h)
+            thumb = cv2.resize(frame, (int(w*scale), int(h*scale)))
+            img = QImage(thumb.data, thumb.shape[1], thumb.shape[0], thumb.strides[0], QImage.Format_RGB888)
+            pix = QPixmap.fromImage(img)
+            self.drag_widget.show_thumbnail(pix)
+        self.process_btn.setEnabled(True)
 
-    def _browse_video(self):
+    def _open_file(self):
         base = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'raw', 'own_videos'))
-        file_path, _ = QFileDialog.getOpenFileName(self, "Seleccionar vídeo", base, "Vídeos (*.mp4 *.mov *.avi *.mkv)")
-        if file_path:
-            self._on_video_selected(file_path)
+        file, _ = QFileDialog.getOpenFileName(self, "Seleccionar vídeo", base, "Vídeos (*.mp4 *.mov *.avi *.mkv)")
+        if file:
+            self.drag_widget.clear()
+            self._video_selected(file)
 
-    def _browse_output(self):
-        folder = QFileDialog.getExistingDirectory(self, "Seleccionar carpeta", self.edit_output.text())
-        if folder:
-            self.edit_output.setText(folder)
+    def _open_dir(self):
+        d = QFileDialog.getExistingDirectory(self, "Seleccionar carpeta", self.out_edit.text())
+        if d:
+            self.out_edit.setText(d)
 
-    def _start_processing(self):
-        if not hasattr(self, 'video_path'):
-            return
-        out = self.edit_output.text().strip()
-        os.makedirs(out, exist_ok=True)
+    def _start(self):
+        # ensure output_folder created
+        os.makedirs(self.output_folder, exist_ok=True)
         params = dict(
             video_path=self.video_path,
-            output_dir=out,
-            sample_rate=self.spin_sample.value(),
-            rotate=int(self.combo_rotate.currentText()),
-            target_width=self.spin_width.value(),
-            target_height=self.spin_height.value(),
-            normalize=self.chk_norm.isChecked()
+            output_dir=self.output_folder,
+            sample_rate=self.sample.value(),
+            rotate=int(self.rotate.currentText()),
+            target_width=self.wi.value(),
+            target_height=self.he.value(),
+            normalize=self.norm.isChecked()
         )
         self.worker = WorkerThread(**params)
-        self.worker.progress_signal.connect(self.progress_bar.setValue)
+        self.worker.progress_signal.connect(self.progress.setValue)
         self.worker.error_signal.connect(lambda e: QMessageBox.critical(self, "Error", e))
-        self.worker.finished_signal.connect(self._on_finished)
-        self.btn_process.setEnabled(False)
+        self.worker.finished_signal.connect(lambda m: QMessageBox.information(self, "Finalizado", f"Procesados {m['frames_saved']} frames\nGuardados en el directorio: {self.output_folder}"))
+        self.process_btn.setEnabled(False)
         self.worker.start()
-
-    def _on_finished(self, metadata):
-        QMessageBox.information(self, "Finalizado",
-            f"Procesados {metadata['frames_saved']} frames en {metadata['duration']:.1f}s")
-        self.btn_process.setEnabled(True)
-
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    win = MainWindow()
-    win.show()
-    sys.exit(app.exec_())
+    w = MainWindow(); w.show(); sys.exit(app.exec_())
