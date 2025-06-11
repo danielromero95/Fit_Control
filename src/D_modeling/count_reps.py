@@ -1,122 +1,293 @@
-# src/D_modeling/count_reps.py
+# src/B_pose_estimation/pose_utils.py
+"""
+Librería para la estimación de pose y el cálculo de métricas.
 
+Este módulo contiene la lógica para:
+1.  Detectar landmarks de pose usando MediaPipe, con y sin recorte centrado.
+2.  Extraer landmarks de una secuencia de imágenes (en memoria) a un DataFrame.
+3.  Filtrar e interpolar los datos de landmarks.
+4.  Calcular métricas biomecánicas (ángulos, distancias, velocidades) a partir de los landmarks.
+
+Las clases y funciones están diseñadas para operar con objetos de Python (NumPy, Pandas)
+en lugar de leer/escribir archivos intermedios, permitiendo su uso en pipelines
+de memoria como el de la GUI principal.
+"""
 import os
+import cv2
+import numpy as np
+import math
 import pandas as pd
-import argparse
+import logging
 
+logger = logging.getLogger(__name__)
 
-def count_reps_from_angles(angle_sequence, low_thresh=90.0, high_thresh=160.0):
+# =================================================================================
+# 1. CLASES ESTIMATOR (ENCAPSULAN MEDIAPIPE)
+# =================================================================================
+
+class PoseEstimator:
     """
-    Cuenta cuántas repeticiones completas hay en una secuencia de ángulos de rodilla.
-    Un ciclo completo se define como:
-      1) EMPEZAR en 'parte alta' (ángulo >= high_thresh)
-      2) BAJAR por debajo de low_thresh → 'down'
-      3) SUBIR nuevamente hasta >= high_thresh → cuenta 1 rep
-
-    Parámetros:
-    -----------
-    angle_sequence : lista o array de floats
-        Serie temporal de ángulos (en grados) de la rodilla.
-    low_thresh : float
-        Umbral que indica 'fondo de la sentadilla' (< low_thresh).
-    high_thresh : float
-        Umbral que indica 'parte alta de la sentadilla' (>= high_thresh).
-
-    Retorna:
-    --------
-    int
-        Número de repeticiones detectadas.
+    Encapsula MediaPipe Pose (sin cropping).
+    La importación de MediaPipe se hace en el constructor para no bloquear
+    la importación de este módulo en entornos sin mediapipe instalado.
     """
-    reps = 0
-    state = "idle"
-    # Estados posibles:
-    #   - "idle": aún no hemos encontrado un ángulo >= high_thresh para "iniciar" un rep
-    #   - "up"  : estamos en zona alta (ángulo ≥ high_thresh), listos para bajar
-    #   - "down": hemos bajado por debajo de low_thresh, esperamos subir para contar 1 rep
+    def __init__(self, static_image_mode=True, model_complexity=1, min_detection_confidence=0.5):
+        try:
+            from mediapipe.python.solutions import pose as mp_pose_module
+            from mediapipe.python.solutions import drawing_utils as mp_drawing_utils
+        except ImportError:
+            logger.error("MediaPipe no está instalado. Por favor, instálalo para usar PoseEstimator.")
+            raise
 
-    for angle in angle_sequence:
-        if state == "idle":
-            # No contamos nada hasta que primero veamos un ángulo en la parte alta
-            if angle >= high_thresh:
-                state = "up"
-        elif state == "up":
-            # Si en 'up' vemos un ángulo < low_thresh, pasamos a 'down'
-            if angle < low_thresh:
-                state = "down"
-        elif state == "down":
-            # Si en 'down' subimos a ≥ high_thresh, contamos 1 rep y volvemos a 'up'
-            if angle >= high_thresh:
-                reps += 1
-                state = "up"
-        # demás casos (e.g. en 'up' con ángulos intermedios, en 'down' con ángulos intermedios, etc.)
-        # simplemente no cambian el estado.
-    return reps
+        self.mp_pose_module = mp_pose_module
+        self.mp_drawing_utils = mp_drawing_utils
+        self.pose = self.mp_pose_module.Pose(
+            static_image_mode=static_image_mode,
+            model_complexity=model_complexity,
+            min_detection_confidence=min_detection_confidence
+        )
 
+    def estimate_pose(self, image):
+        """
+        Estima la pose en una imagen BGR.
+        Retorna (landmarks, annotated_image).
+        """
+        img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        results = self.pose.process(img_rgb)
 
-def count_reps_main(input_metrics, output_count=None, knee_column="rodilla_izq",
-                    low_thresh=90.0, high_thresh=160.0):
+        if not results.pose_landmarks:
+            return None, image
+
+        landmarks = [{'x': lm.x, 'y': lm.y, 'z': lm.z, 'visibility': lm.visibility} for lm in results.pose_landmarks.landmark]
+        
+        annotated_image = image.copy()
+        self.mp_drawing_utils.draw_landmarks(
+            annotated_image, results.pose_landmarks, self.mp_pose_module.POSE_CONNECTIONS
+        )
+        return landmarks, annotated_image
+
+    def close(self):
+        self.pose.close()
+
+class CroppedPoseEstimator:
     """
-    Lectura del CSV de métricas, extrae la columna de ángulo de rodilla indicada,
-    aplica el conteo de repeticiones y guarda/retorna el resultado.
-
-    Parámetros:
-    -----------
-    input_metrics : str
-        Ruta al CSV que contiene las métricas generadas (incluyendo la columna de ángulo de rodilla).
-    output_count : str o None
-        Si se provee, ruta donde se guardará el número de repeticiones (como texto).
-        Si es None, simplemente imprime el resultado en consola.
-    knee_column : str
-        Nombre de la columna que contiene el ángulo de rodilla a usar para el conteo.
-    low_thresh : float
-        Umbral para “fondo” de sentadilla.
-    high_thresh : float
-        Umbral para “parte alta” de sentadilla.
+    Wrapper de MediaPipe que realiza una detección en dos pasadas para
+    enfocarse en la persona (cropping).
     """
-    if not os.path.isfile(input_metrics):
-        raise FileNotFoundError(f"El CSV de métricas no existe: {input_metrics}")
+    def __init__(self, static_image_mode=True, model_complexity=1, min_detection_confidence=0.5, crop_margin=0.15, target_size=(256, 256)):
+        self.crop_margin = crop_margin
+        self.target_size = target_size
+        try:
+            from mediapipe.python.solutions import pose as mp_pose_module
+            from mediapipe.python.solutions import drawing_utils as mp_drawing_utils
+        except ImportError:
+            logger.error("MediaPipe no está instalado. Por favor, instálalo para usar CroppedPoseEstimator.")
+            raise
+        
+        self.mp_pose_module = mp_pose_module
+        self.mp_drawing_utils = mp_drawing_utils
+        self.pose_full = self.mp_pose_module.Pose(static_image_mode=static_image_mode, model_complexity=model_complexity, min_detection_confidence=min_detection_confidence)
+        self.pose_crop = self.mp_pose_module.Pose(static_image_mode=static_image_mode, model_complexity=model_complexity, min_detection_confidence=min_detection_confidence)
 
-    df = pd.read_csv(input_metrics)
+    def estimate_and_crop(self, image_bgr):
+        """
+        Detecta, recorta la persona y vuelve a detectar para mayor precisión.
+        Retorna (landmarks_del_crop, imagen_del_crop_anotada).
+        """
+        h0, w0 = image_bgr.shape[:2]
+        img_rgb_full = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
+        results_full = self.pose_full.process(img_rgb_full)
 
-    if knee_column not in df.columns:
-        raise ValueError(f"La columna '{knee_column}' no se encontró en el CSV de métricas.")
+        if not results_full.pose_landmarks:
+            return None, image_bgr
 
-    # Extraer secuencia de ángulos, rellenar NaN con un valor muy alto (> high_thresh)
-    # para que no interfiera en el conteo durante frames no detectados.
-    angles = df[knee_column].fillna(high_thresh + 1.0).tolist()
+        lms_full = results_full.pose_landmarks.landmark
+        xy_full = np.array([[lm.x * w0, lm.y * h0] for lm in lms_full])
+        x_min, y_min = xy_full.min(axis=0)
+        x_max, y_max = xy_full.max(axis=0)
 
-    n_reps = count_reps_from_angles(angles, low_thresh=low_thresh, high_thresh=high_thresh)
+        dx, dy = (x_max - x_min) * self.crop_margin, (y_max - y_min) * self.crop_margin
+        x1, y1 = max(int(x_min - dx), 0), max(int(y_min - dy), 0)
+        x2, y2 = min(int(x_max + dx), w0), min(int(y_max + dy), h0)
 
-    if output_count:
-        os.makedirs(os.path.dirname(output_count), exist_ok=True)
-        with open(output_count, "w", encoding="utf-8") as f:
-            f.write(str(n_reps))
-        print(f"Reps contadas = {n_reps}. Resultado guardado en: {output_count}")
-    else:
-        print(f"Reps contadas = {n_reps}.")
+        crop = image_bgr[y1:y2, x1:x2]
+        if crop.size == 0:
+            return None, image_bgr
 
+        crop_resized = cv2.resize(crop, self.target_size, interpolation=cv2.INTER_LINEAR)
+        crop_rgb = cv2.cvtColor(crop_resized, cv2.COLOR_BGR2RGB)
+        results_crop = self.pose_crop.process(crop_rgb)
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Cuenta repeticiones (ciclos) en base a ángulos de rodilla del CSV de métricas."
-    )
-    parser.add_argument("--input_metrics", required=True,
-                        help="Ruta al CSV que contiene las métricas por frame (ángulo de rodilla).")
-    parser.add_argument("--output_count", default=None,
-                        help="Archivo donde guardar el número de repeticiones (opcional).")
-    parser.add_argument("--knee_column", default="rodilla_izq",
-                        help="Nombre de la columna del ángulo de rodilla en el CSV (por defecto: 'rodilla_izq').")
-    parser.add_argument("--low_thresh", type=float, default=90.0,
-                        help="Umbral para considerar 'fondo' de sentadilla (< low_thresh).")
-    parser.add_argument("--high_thresh", type=float, default=160.0,
-                        help="Umbral para considerar 'parte alta' de sentadilla (>= high_thresh).")
+        annotated_crop = crop_resized.copy()
+        if results_crop.pose_landmarks:
+            landmarks_crop = [{'x': lm.x, 'y': lm.y, 'z': lm.z, 'visibility': lm.visibility} for lm in results_crop.pose_landmarks.landmark]
+            self.mp_drawing_utils.draw_landmarks(annotated_crop, results_crop.pose_landmarks, self.mp_pose_module.POSE_CONNECTIONS)
+        else:
+            landmarks_crop = None
+        
+        return landmarks_crop, annotated_crop
 
-    args = parser.parse_args()
+    def close(self):
+        self.pose_full.close()
+        self.pose_crop.close()
 
-    count_reps_main(
-        input_metrics=args.input_metrics,
-        output_count=args.output_count,
-        knee_column=args.knee_column,
-        low_thresh=args.low_thresh,
-        high_thresh=args.high_thresh
-    )
+# =================================================================================
+# 2. FUNCIONES DE LÓGICA DE PIPELINE (OPERAN EN MEMORIA)
+# =================================================================================
+
+def extract_landmarks_from_frames(frames: list, use_crop: bool = False, visibility_threshold: float = 0.5):
+    """
+    Toma una lista de imágenes (frames), extrae los landmarks de cada una
+    y devuelve un DataFrame de pandas con los resultados.
+    """
+    logger.info(f"Extrayendo landmarks de {len(frames)} frames. Usando crop: {use_crop}")
+    estimator = CroppedPoseEstimator(min_detection_confidence=visibility_threshold) if use_crop else PoseEstimator(min_detection_confidence=visibility_threshold)
+    
+    rows = []
+    for i, img in enumerate(frames):
+        landmarks, _ = estimator.estimate_and_crop(img) if use_crop else estimator.estimate_pose(img)
+        
+        row = {"frame_idx": i}
+        if landmarks:
+            for lm_idx, pt in enumerate(landmarks):
+                row[f"x{lm_idx}"] = pt['x']
+                row[f"y{lm_idx}"] = pt['y']
+                row[f"z{lm_idx}"] = pt['z']
+                row[f"v{lm_idx}"] = pt['visibility']
+        else: # Si no se detectan landmarks, rellenar con NaN
+            for lm_idx in range(33):
+                row[f"x{lm_idx}"] = float("nan")
+                row[f"y{lm_idx}"] = float("nan")
+                row[f"z{lm_idx}"] = float("nan")
+                row[f"v{lm_idx}"] = float("nan")
+        rows.append(row)
+        
+    estimator.close()
+    return pd.DataFrame(rows)
+
+def filter_and_interpolate_landmarks(df_raw: pd.DataFrame, min_confidence: float = 0.5):
+    """
+    Toma un DataFrame de landmarks raw, filtra los puntos de baja confianza,
+    interpola los huecos y devuelve un array NumPy de secuencias de landmarks.
+    """
+    logger.info(f"Filtrando e interpolando {len(df_raw)} frames de landmarks.")
+    n_frames = len(df_raw)
+    n_points = 33
+    
+    # Pre-aloja arrays de NumPy para eficiencia
+    arr = np.full((n_frames, n_points, 3), np.nan, dtype=float) # x, y, visibility
+    
+    # Poblar el array con datos válidos del DataFrame
+    for t, (_, row) in enumerate(df_raw.iterrows()):
+        for i in range(n_points):
+            visibility = row.get(f"v{i}", np.nan)
+            if pd.notna(visibility) and visibility >= min_confidence:
+                arr[t, i, 0] = row.get(f"x{i}")
+                arr[t, i, 1] = row.get(f"y{i}")
+                arr[t, i, 2] = visibility
+
+    # Interpolar cada coordenada de landmark a lo largo del tiempo
+    for i in range(n_points):
+        valid_mask = ~np.isnan(arr[:, i, 0])
+        valid_indices = np.where(valid_mask)[0]
+        if len(valid_indices) > 1: # Se necesita más de un punto para interpolar
+            interp_indices = np.arange(n_frames)
+            arr[:, i, 0] = np.interp(interp_indices, valid_indices, arr[valid_indices, i, 0])
+            arr[:, i, 1] = np.interp(interp_indices, valid_indices, arr[valid_indices, i, 1])
+
+    # Reconstruir la lista de diccionarios desde el array de NumPy
+    filtered_sequence = []
+    for t in range(n_frames):
+        frame_landmarks = []
+        for i in range(n_points):
+            # Usar la visibilidad original (o NaN si nunca fue válida)
+            visibility = arr[t, i, 2] if pd.notna(arr[t, i, 2]) else 0.0
+            frame_landmarks.append({
+                'x': arr[t, i, 0], 'y': arr[t, i, 1], 'visibility': visibility
+            })
+        filtered_sequence.append(frame_landmarks)
+        
+    return np.array(filtered_sequence, dtype=object)
+
+def calculate_metrics_from_sequence(sequence: np.ndarray, fps: float):
+    """
+    Toma una secuencia de landmarks filtrada y los fps, y devuelve
+    un DataFrame con todas las métricas biomecánicas calculadas.
+    """
+    logger.info(f"Calculando métricas para una secuencia de {len(sequence)} frames.")
+    all_metrics = []
+    for idx, frame_landmarks in enumerate(sequence):
+        row = {"frame_idx": idx}
+        if frame_landmarks is None or pd.isna(frame_landmarks[0]['x']):
+            row.update({ 'rodilla_izq': np.nan, 'rodilla_der': np.nan, 'codo_izq': np.nan, 'codo_der': np.nan, 'anchura_hombros': np.nan, 'separacion_pies': np.nan })
+        else:
+            norm_lm = normalize_landmarks(frame_landmarks)
+            angles = extract_joint_angles(norm_lm)
+            dists = calculate_distances(norm_lm)
+            row.update(angles)
+            row.update(dists)
+        all_metrics.append(row)
+    
+    dfm = pd.DataFrame(all_metrics)
+    if dfm.empty: return dfm
+
+    # Calcular velocidades y simetrías
+    dfm["vel_ang_rod_izq"] = calculate_angular_velocity(dfm["rodilla_izq"].fillna(method='ffill').fillna(method='bfill').tolist(), fps)
+    dfm["vel_ang_rod_der"] = calculate_angular_velocity(dfm["rodilla_der"].fillna(method='ffill').fillna(method='bfill').tolist(), fps)
+    dfm["vel_ang_codo_izq"] = calculate_angular_velocity(dfm["codo_izq"].fillna(method='ffill').fillna(method='bfill').tolist(), fps)
+    dfm["vel_ang_codo_der"] = calculate_angular_velocity(dfm["codo_der"].fillna(method='ffill').fillna(method='bfill').tolist(), fps)
+    
+    dfm["sim_rodilla"] = dfm.apply(lambda row: calculate_symmetry(row['rodilla_izq'], row['rodilla_der']), axis=1)
+    dfm["sim_codo"] = dfm.apply(lambda row: calculate_symmetry(row['codo_izq'], row['codo_der']), axis=1)
+    
+    return dfm
+
+# =================================================================================
+# 3. FUNCIONES PURAS DE UTILIDAD (CÁLCULOS MATEMÁTICOS)
+# =================================================================================
+
+def normalize_landmarks(landmarks):
+    hip_left = landmarks[23]
+    hip_right = landmarks[24]
+    cx = (hip_left['x'] + hip_right['x']) / 2.0
+    cy = (hip_left['y'] + hip_right['y']) / 2.0
+    return [{'x': lm['x'] - cx, 'y': lm['y'] - cy, 'z': lm['z'], 'visibility': lm['visibility']} for lm in landmarks]
+
+def calculate_angle(p1, p2, p3):
+    v1 = (p1['x'] - p2['x'], p1['y'] - p2['y'])
+    v2 = (p3['x'] - p2['x'], p3['y'] - p2['y'])
+    dot_product = v1[0] * v2[0] + v1[1] * v2[1]
+    magnitude1 = math.hypot(v1[0], v1[1])
+    magnitude2 = math.hypot(v2[0], v2[1])
+    if magnitude1 * magnitude2 == 0: return 0.0
+    cosine_angle = max(min(dot_product / (magnitude1 * magnitude2), 1.0), -1.0)
+    return math.degrees(math.acos(cosine_angle))
+
+def extract_joint_angles(landmarks):
+    return {
+        'rodilla_izq': calculate_angle(landmarks[23], landmarks[25], landmarks[27]),
+        'rodilla_der': calculate_angle(landmarks[24], landmarks[26], landmarks[28]),
+        'codo_izq': calculate_angle(landmarks[11], landmarks[13], landmarks[15]),
+        'codo_der': calculate_angle(landmarks[12], landmarks[14], landmarks[16]),
+    }
+
+def calculate_distances(landmarks):
+    return {
+        'anchura_hombros': abs(landmarks[12]['x'] - landmarks[11]['x']),
+        'separacion_pies': abs(landmarks[28]['x'] - landmarks[27]['x']),
+    }
+
+def calculate_angular_velocity(angle_sequence, fps):
+    if not angle_sequence or fps == 0: return [0.0] * len(angle_sequence)
+    velocities = [0.0]  # La velocidad en el primer frame es 0
+    dt = 1.0 / fps
+    for i in range(1, len(angle_sequence)):
+        delta_angle = angle_sequence[i] - angle_sequence[i-1]
+        velocities.append(abs(delta_angle) / dt)
+    return velocities
+
+def calculate_symmetry(angle_left, angle_right):
+    if pd.isna(angle_left) or pd.isna(angle_right): return np.nan
+    max_angle = max(abs(angle_left), abs(angle_right))
+    if max_angle == 0: return 1.0
+    return 1.0 - (abs(angle_left - angle_right) / max_angle)
