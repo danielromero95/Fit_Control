@@ -7,6 +7,72 @@ import math
 import argparse
 import pandas as pd
 
+# src/B_pose_estimation/pose_utils.py (parte superior)
+
+import os
+import cv2
+import numpy as np
+import math
+import argparse
+import pandas as pd
+
+# ---------------------------------------------------------------------------------
+# 1. CLASE PoseEstimator (importa mediapipe SOLO si se instancia)
+# ---------------------------------------------------------------------------------
+class PoseEstimator:
+    """
+    Encapsula MediaPipe Pose (sin cropping).
+    La importación de MediaPipe se hace en el constructor, para que
+    si nunca se usa este objeto (e.g. en filter_interp/metrics), no falle.
+    """
+    def __init__(self, static_image_mode=False, model_complexity=1, min_detection_confidence=0.5):
+        # Importamos aquí para no exigir mediapipe si nunca se usa este constructor:
+        from mediapipe.python.solutions import pose as mp_pose_module
+        from mediapipe.python.solutions import drawing_utils as mp_drawing_utils
+
+        self.mp_pose_module = mp_pose_module
+        self.mp_drawing_utils = mp_drawing_utils
+
+        # Creamos el objeto Pose
+        self.pose = self.mp_pose_module.Pose(
+            static_image_mode=static_image_mode,
+            model_complexity=model_complexity,
+            min_detection_confidence=min_detection_confidence
+        )
+
+    def estimate_pose(self, image):
+        """
+        Recibe `image` en formato BGR (OpenCV), retorna:
+          - landmarks: lista de 33 dicts {'x','y','z','visibility'} o None si no detecta.
+          - annotated_image: copia de imagen con landmarks dibujados (BGR).
+        """
+        img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        results = self.pose.process(img_rgb)
+
+        if not results.pose_landmarks:
+            return None, image
+
+        landmarks = []
+        for lm in results.pose_landmarks.landmark:
+            landmarks.append({
+                'x': lm.x,
+                'y': lm.y,
+                'z': lm.z,
+                'visibility': lm.visibility
+            })
+
+        annotated = image.copy()
+        self.mp_drawing_utils.draw_landmarks(
+            annotated,
+            results.pose_landmarks,
+            self.mp_pose_module.POSE_CONNECTIONS
+        )
+        return landmarks, annotated
+
+    def close(self):
+        self.pose.close()
+
+
 # ---------------------------------------------------------------------------------
 # 1. CLASE CroppedPoseEstimator (importa mediapipe SOLO si se instancia)
 # ---------------------------------------------------------------------------------
@@ -298,26 +364,21 @@ def calculate_symmetry(angle_left, angle_right):
         return 1.0
     return 1.0 - abs(angle_left - angle_right) / max(angle_left, angle_right)
 
-
 # ---------------------------------------------------------------------------------
-# 6. EXTRACCIÓN POR LOTE A CSV (subcomando "to_csv"), USANDO CroppedPoseEstimator
+# 6.1 EXTRACCIÓN POR LOTE A CSV (subcomando "to_csv"), USANDO PoseEstimator (SIN CROP)
 # ---------------------------------------------------------------------------------
-def extract_pose_landmarks_to_csv(image_dir, output_csv, visibility_threshold=0.5):
+def extract_pose_landmarks_to_csv_sin_CROP(image_dir, output_csv, visibility_threshold=0.5):
     """
-    Usa CroppedPoseEstimator para detectar landmarks en cada imagen de image_dir
+    Usa PoseEstimator para detectar landmarks en cada imagen de image_dir
     y guarda un CSV con columnas:
       image, x0,y0,z0,v0, x1,y1,z1,v1, …, x32,y32,z32,v32.
 
-    NOTA: ahora el detector se hace “en crop” centrado en la persona, gracias a
-    CroppedPoseEstimator. Aunque internamente el wrapper primero detecta en la
-    imagen completa y luego recorta, al usuario final le basta con llamar aquí.
+    (No se hace crop; se procesan los frames completos.)
     """
-    estimator = CroppedPoseEstimator(
+    estimator = PoseEstimator(
         static_image_mode=True,
         model_complexity=1,
-        min_detection_confidence=visibility_threshold,
-        crop_margin=0.15,
-        target_size=(256, 256)
+        min_detection_confidence=visibility_threshold
     )
 
     if not os.path.isdir(image_dir):
@@ -333,15 +394,14 @@ def extract_pose_landmarks_to_csv(image_dir, output_csv, visibility_threshold=0.
             print(f"[WARNING] No se pudo leer {img_path}")
             continue
 
-        # Usamos el método estimate_and_crop para obtener landmarks centrados en el recorte
-        landmarks, _annotated_crop = estimator.estimate_and_crop(img)
+        # Llamamos al PoseEstimator sobre la imagen completa
+        landmarks, _ = estimator.estimate_pose(img)
 
         row = {"image": img_name}
         if landmarks:
             for idx, pt in enumerate(landmarks):
                 v = pt['visibility']
                 if v < visibility_threshold or math.isnan(v):
-                    # Si la visibilidad es baja o NaN, ponemos NaN en x,y,z,v
                     row[f"x{idx}"] = float("nan")
                     row[f"y{idx}"] = float("nan")
                     row[f"z{idx}"] = float("nan")
@@ -352,7 +412,7 @@ def extract_pose_landmarks_to_csv(image_dir, output_csv, visibility_threshold=0.
                     row[f"z{idx}"] = pt['z']
                     row[f"v{idx}"] = v
         else:
-            # Si no detectó pose (landmarks es None), rellenar con NaN
+            # Si no detectó pose, rellenamos todo con NaN:
             for idx in range(33):
                 row[f"x{idx}"] = float("nan")
                 row[f"y{idx}"] = float("nan")
@@ -367,6 +427,89 @@ def extract_pose_landmarks_to_csv(image_dir, output_csv, visibility_threshold=0.
     os.makedirs(os.path.dirname(output_csv), exist_ok=True)
     df.to_csv(output_csv, index=False)
     print(f"CSV de landmarks guardado en: {output_csv}")
+
+
+
+# ---------------------------------------------------------------------------------
+# 6.2 EXTRACCIÓN POR LOTE A CSV (subcomando "to_csv"), USANDO CroppedPoseEstimator
+# ---------------------------------------------------------------------------------
+def extract_pose_landmarks_to_csv_con_CROP(image_dir, output_csv, visibility_threshold=0.5):
+    """
+    Usa CroppedPoseEstimator para detectar landmarks en cada imagen de image_dir
+    y guarda un CSV con columnas:
+      image, x0,y0,z0,v0, x1,y1,z1,v1, …, x32,y32,z32,v32.
+
+    NOTA: ahora el detector se hace “en crop” centrado en la persona, gracias a
+    CroppedPoseEstimator. Aunque internamente el wrapper primero detecta en la
+    imagen completa y luego recorta, al usuario final le basta con llamar aquí.
+    """
+    # Importamos CroppedPoseEstimator (definido más arriba en este mismo archivo)
+    estimator = CroppedPoseEstimator(
+        static_image_mode=True,
+        model_complexity=1,
+        min_detection_confidence=visibility_threshold,
+        crop_margin=0.15,
+        target_size=(256, 256)
+    )
+
+    if not os.path.isdir(image_dir):
+        raise NotADirectoryError(f"El directorio no existe: {image_dir}")
+
+    image_files = sorted([f for f in os.listdir(image_dir) if f.lower().endswith(".jpg")])
+    rows = []
+
+    idx_frame = 0  # contador de imágenes para guardar los primeros 2 crops de depuración
+    for img_name in image_files:
+        img_path = os.path.join(image_dir, img_name)
+        img = cv2.imread(img_path)
+        if img is None:
+            print(f"[WARNING] No se pudo leer {img_path}")
+            continue
+
+        # Detectamos y recortamos
+        landmarks, annotated_crop = estimator.estimate_and_crop(img)
+
+        # Guardamos los dos primeros crops para depuración
+        if idx_frame < 2 and annotated_crop is not None:
+            os.makedirs("debug_crops", exist_ok=True)
+            cv2.imwrite(os.path.join("debug_crops", f"crop_{idx_frame:03d}.jpg"), annotated_crop)
+        idx_frame += 1
+
+        # Empezamos a construir la fila del CSV
+        row = {"image": img_name}
+        if landmarks:
+            # Recorremos cada punto con i (no usamos idx para no pisar idx_frame)
+            for i, pt in enumerate(landmarks):
+                v = pt['visibility']
+                # Si visibilidad baja o NaN, guardamos NaN
+                if v < visibility_threshold or math.isnan(v):
+                    row[f"x{i}"] = float("nan")
+                    row[f"y{i}"] = float("nan")
+                    row[f"z{i}"] = float("nan")
+                    row[f"v{i}"] = float("nan")
+                else:
+                    row[f"x{i}"] = pt['x']
+                    row[f"y{i}"] = pt['y']
+                    row[f"z{i}"] = pt['z']
+                    row[f"v{i}"] = v
+        else:
+            # Si no hubo detección en el crop, rellenamos con NaN para los 33 puntos
+            for i in range(33):
+                row[f"x{i}"] = float("nan")
+                row[f"y{i}"] = float("nan")
+                row[f"z{i}"] = float("nan")
+                row[f"v{i}"] = float("nan")
+
+        rows.append(row)
+
+    estimator.close()
+
+    # Creamos el DataFrame y lo guardamos
+    df = pd.DataFrame(rows)
+    os.makedirs(os.path.dirname(output_csv), exist_ok=True)
+    df.to_csv(output_csv, index=False)
+    print(f"CSV de landmarks guardado en: {output_csv}")
+
 
 
 # ---------------------------------------------------------------------------------
@@ -489,7 +632,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.command == "to_csv":
-        extract_pose_landmarks_to_csv(
+        extract_pose_landmarks_to_csv_sin_CROP(
             image_dir=args.input_dir,
             output_csv=args.output_csv,
             visibility_threshold=args.visibility_threshold

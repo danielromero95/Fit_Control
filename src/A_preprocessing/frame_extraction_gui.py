@@ -1,60 +1,50 @@
-# --------------------------------------------------------
-# Archivo: frame_extraction_gui.py
-# --------------------------------------------------------
-"""
-Interfaz gráfica (PyQt5) unificada para:
-  1) Extraer fotogramas (muestra cada N, rota).
-  2) Preprocesar cada frame (redimensionar y normalizar).
-Mostramos logs en tiempo real y guardamos los resultados en una sola carpeta.
-"""
-
 import sys
 import os
 import logging
+import cv2
 from PyQt5.QtWidgets import (
-    QApplication,
-    QWidget,
-    QLabel,
-    QPushButton,
-    QLineEdit,
-    QFileDialog,
-    QSpinBox,
-    QComboBox,
-    QTextEdit,
-    QVBoxLayout,
-    QHBoxLayout,
-    QMessageBox,
-    QHBoxLayout,
-    QFormLayout,
-    QCheckBox
+    QApplication, QMainWindow, QWidget, QLabel, QPushButton, QLineEdit,
+    QFileDialog, QSpinBox, QComboBox, QCheckBox, QVBoxLayout,
+    QHBoxLayout, QTabWidget, QMessageBox, QProgressBar, QFormLayout
 )
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QObject
-from frame_extraction import extract_and_preprocess_frames  # Importa la función unificada
+from PyQt5.QtCore import Qt, QThread, pyqtSignal
+from PyQt5.QtGui import QPixmap, QImage
+from frame_extraction import extract_and_preprocess_frames
 
 
-# --------------------------------------------------------
-# Logging handler que envía mensajes a un QTextEdit
-# --------------------------------------------------------
-class QTextEditLogger(QObject, logging.Handler):
-    sigLog = pyqtSignal(str)
+class DragDropWidget(QWidget):
+    file_dropped = pyqtSignal(str)
 
-    def __init__(self, parent):
-        QObject.__init__(self)
-        logging.Handler.__init__(self)
-        self.widget = parent
+    def __init__(self):
+        super().__init__()
+        self.setAcceptDrops(True)
+        self.label = QLabel("Arrastra y suelta tu vídeo aquí")
+        self.label.setAlignment(Qt.AlignCenter)
+        layout = QVBoxLayout()
+        layout.addWidget(self.label)
+        self.setLayout(layout)
+        self.setStyleSheet(
+            "QWidget { border: 2px dashed #aaa; border-radius: 8px; } QLabel { color: #555; font-size: 16px; }"
+        )
 
-    def emit(self, record):
-        msg = self.format(record)
-        self.sigLog.emit(msg)
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        for url in event.mimeData().urls():
+            path = url.toLocalFile()
+            if os.path.isfile(path):
+                self.file_dropped.emit(path)
+                break
 
 
-# --------------------------------------------------------
-# WorkerThread para ejecutar extract_and_preprocess_frames sin bloquear la GUI
-# --------------------------------------------------------
 class WorkerThread(QThread):
+    progress_signal = pyqtSignal(int)
     finished_signal = pyqtSignal(dict)
     error_signal = pyqtSignal(str)
-    log_signal = pyqtSignal(str)
 
     def __init__(self, video_path, output_dir, sample_rate, rotate,
                  target_width, target_height, normalize):
@@ -69,225 +59,187 @@ class WorkerThread(QThread):
 
     def run(self):
         try:
-            self.log_signal.emit("Iniciando extracción + preprocesamiento en segundo plano...\n")
-            metadata = extract_and_preprocess_frames(
-                video_path=self.video_path,
-                output_dir=self.output_dir,
-                sample_rate=self.sample_rate,
-                rotate=self.rotate,
-                target_width=self.target_width,
-                target_height=self.target_height,
-                normalize=self.normalize
-            )
-            self.log_signal.emit("Proceso finalizado sin errores.\n")
+            cap = cv2.VideoCapture(self.video_path)
+            if not cap.isOpened():
+                raise IOError(f"No se pudo abrir el vídeo: {self.video_path}")
+
+            fps = cap.get(cv2.CAP_PROP_FPS)
+            frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            os.makedirs(self.output_dir, exist_ok=True)
+
+            saved = 0
+            idx = 0
+            step = max(frame_count // 100, 1)
+
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+                if idx % self.sample_rate == 0:
+                    if self.rotate == 90:
+                        frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+                    elif self.rotate == 180:
+                        frame = cv2.rotate(frame, cv2.ROTATE_180)
+                    elif self.rotate == 270:
+                        frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
+                    frame = cv2.resize(frame, (self.target_width, self.target_height), interpolation=cv2.INTER_AREA)
+                    if self.normalize:
+                        frame = (frame.astype('float32') / 255.0 * 255.0).astype('uint8')
+                    fname = os.path.join(self.output_dir, f"frame_{saved+1:04d}.jpg")
+                    cv2.imwrite(fname, frame)
+                    saved += 1
+                idx += 1
+                if idx % step == 0:
+                    percent = int(idx / frame_count * 100)
+                    self.progress_signal.emit(percent)
+            cap.release()
+            self.progress_signal.emit(100)
+            metadata = {'fps': fps, 'frame_count': frame_count, 'duration': frame_count/fps if fps else 0, 'frames_saved': saved}
             self.finished_signal.emit(metadata)
         except Exception as e:
-            self.log_signal.emit(f"Error durante el proceso:\n{str(e)}\n")
             self.error_signal.emit(str(e))
 
 
-# --------------------------------------------------------
-# Ventana principal de la GUI
-# --------------------------------------------------------
-class MainWindow(QWidget):
+class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Extracción + Preprocesamiento de Fotogramas")
-        self.setMinimumSize(650, 550)
-        self._setup_ui()
-        self._setup_logging()
+        self.setWindowTitle("Gym Performance Analyzer")
+        self.resize(700, 600)
+        self._init_ui()
 
-    def _setup_ui(self):
+    def _init_ui(self):
+        tabs = QTabWidget()
+        tabs.addTab(self._build_home_tab(), "Inicio")
+        tabs.addTab(self._build_settings_tab(), "Ajustes")
+        self.setCentralWidget(tabs)
+
+    def _build_home_tab(self):
+        widget = QWidget()
         layout = QVBoxLayout()
 
-        # --- Determinar rutas por defecto relativas a este script ---
-        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-        self.default_input = os.path.join(base_dir, "data", "raw", "own_videos")
-        self.default_output = os.path.join(base_dir, "data", "processed", "frames")
+        self.drag_widget = DragDropWidget()
+        self.drag_widget.file_dropped.connect(self._on_video_selected)
+        layout.addWidget(self.drag_widget)
 
-        # ───────────────────────────────────────────────────────────────────────
-        # Formulario de selección: Vídeo + Carpeta + Sample + Rotar + Width/Height + Normalize
-        # ───────────────────────────────────────────────────────────────────────
-        form_layout = QFormLayout()
+        btn_select = QPushButton("Seleccionar vídeo")
+        btn_select.clicked.connect(self._browse_video)
+        layout.addWidget(btn_select)
 
-        # 1) Vídeo de entrada (solo carpeta como placeholder, luego se elige archivo)
-        self.txt_video = QLineEdit(self.default_input)
-        self.txt_video.setReadOnly(True)
-        btn_browse_video = QPushButton("Seleccionar vídeo")
-        btn_browse_video.clicked.connect(self._browse_video)
-        h_video = QHBoxLayout()
-        h_video.addWidget(self.txt_video)
-        h_video.addWidget(btn_browse_video)
-        form_layout.addRow(QLabel("Vídeo de entrada:"), h_video)
+        # Thumbnail preview
+        self.thumbnail = QLabel()
+        self.thumbnail.setAlignment(Qt.AlignCenter)
+        self.thumbnail.setFixedSize(320, 180)
+        layout.addWidget(self.thumbnail)
 
-        # 2) Carpeta de salida
-        self.txt_output = QLineEdit(self.default_output)
-        self.txt_output.setReadOnly(True)
-        btn_browse_output = QPushButton("Seleccionar carpeta")
-        btn_browse_output.clicked.connect(self._browse_output)
-        h_output = QHBoxLayout()
-        h_output.addWidget(self.txt_output)
-        h_output.addWidget(btn_browse_output)
-        form_layout.addRow(QLabel("Carpeta de salida:"), h_output)
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setValue(0)
+        layout.addWidget(self.progress_bar)
 
-        # 3) Sample Rate (cada N fotogramas)
+        self.btn_process = QPushButton("Procesar vídeo")
+        self.btn_process.clicked.connect(self._start_processing)
+        self.btn_process.setEnabled(False)
+        layout.addWidget(self.btn_process)
+
+        widget.setLayout(layout)
+        return widget
+
+    def _build_settings_tab(self):
+        widget = QWidget()
+        layout = QFormLayout()
+
+        base = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+        self.edit_output = QLineEdit(os.path.join(base, 'data', 'processed', 'frames'))
+        btn_out = QPushButton("...")
+        btn_out.clicked.connect(self._browse_output)
+        hb_out = QHBoxLayout()
+        hb_out.addWidget(self.edit_output)
+        hb_out.addWidget(btn_out)
+        layout.addRow("Carpeta de salida:", hb_out)
+
         self.spin_sample = QSpinBox()
         self.spin_sample.setMinimum(1)
         self.spin_sample.setValue(3)
-        form_layout.addRow(QLabel("Sample Rate (cada N fotogramas):"), self.spin_sample)
+        layout.addRow("Sample Rate:", self.spin_sample)
 
-        # 4) Rotar fotogramas
         self.combo_rotate = QComboBox()
-        self.combo_rotate.addItems(["0", "90", "180", "270"])
-        self.combo_rotate.setCurrentText("90")  # rotación por defecto
-        form_layout.addRow(QLabel("Rotar fotogramas (grados):"), self.combo_rotate)
+        self.combo_rotate.addItems(["0","90","180","270"])
+        self.combo_rotate.setCurrentText("90")
+        layout.addRow("Rotación (°):", self.combo_rotate)
 
-        # 5) Ancho final
         self.spin_width = QSpinBox()
-        self.spin_width.setMinimum(16)
-        self.spin_width.setMaximum(4096)
+        self.spin_width.setRange(16,4096)
         self.spin_width.setValue(256)
-        form_layout.addRow(QLabel("Ancho final (px):"), self.spin_width)
+        layout.addRow("Ancho (px):", self.spin_width)
 
-        # 6) Alto final
         self.spin_height = QSpinBox()
-        self.spin_height.setMinimum(16)
-        self.spin_height.setMaximum(4096)
+        self.spin_height.setRange(16,4096)
         self.spin_height.setValue(256)
-        form_layout.addRow(QLabel("Alto final (px):"), self.spin_height)
+        layout.addRow("Alto (px):", self.spin_height)
 
-        # 7) Checkbox Normalizar
-        self.check_normalize = QCheckBox("Normalizar valores 0–255 → 0.0–1.0 → 0–255")
-        form_layout.addRow(self.check_normalize)
+        self.chk_norm = QCheckBox("Normalizar")
+        self.chk_norm.setToolTip("Escala los valores de píxel de 0–255 a 0.0–1.0 antes de guardar.")
+        self.chk_norm.setChecked(True)
+        layout.addRow(self.chk_norm)
 
-        layout.addLayout(form_layout)
+        widget.setLayout(layout)
+        return widget
 
-        # 8) Botón de iniciar TODO
-        self.btn_start = QPushButton("Iniciar extracción + preprocesamiento")
-        self.btn_start.clicked.connect(self._on_start)
-        self.btn_start.setFixedHeight(36)
-        layout.addWidget(self.btn_start)
-
-        # 9) Área de texto para logs
-        lbl_logs = QLabel("Logs de ejecución:")
-        self.txt_logs = QTextEdit()
-        self.txt_logs.setReadOnly(True)
-        layout.addWidget(lbl_logs)
-        layout.addWidget(self.txt_logs)
-
-        self.setLayout(layout)
-
-    def _setup_logging(self):
-        # Conectar el root logger para que emita en el QTextEdit
-        self.qt_handler = QTextEditLogger(self.txt_logs)
-        self.qt_handler.setLevel(logging.DEBUG)
-        formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s", "%H:%M:%S")
-        self.qt_handler.setFormatter(formatter)
-        self.qt_handler.sigLog.connect(self._append_log)
-        logging.getLogger().addHandler(self.qt_handler)
-        logging.getLogger().setLevel(logging.DEBUG)
-
-    def _append_log(self, msg):
-        cursor = self.txt_logs.textCursor()
-        cursor.movePosition(cursor.End)
-        cursor.insertText(msg + "\n")
-        self.txt_logs.setTextCursor(cursor)
-        self.txt_logs.ensureCursorVisible()
+    def _on_video_selected(self, path):
+        self.video_path = path
+        self.drag_widget.label.setText(os.path.basename(path))
+        cap = cv2.VideoCapture(path)
+        ret, frame = cap.read()
+        cap.release()
+        if ret:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            h, w, ch = frame.shape
+            ratio = min(self.thumbnail.width()/w, self.thumbnail.height()/h)
+            thumb = cv2.resize(frame, (int(w*ratio), int(h*ratio)))
+            image = QImage(thumb.data, thumb.shape[1], thumb.shape[0], thumb.strides[0], QImage.Format_RGB888)
+            pixmap = QPixmap.fromImage(image)
+            self.thumbnail.setPixmap(pixmap)
+        self.btn_process.setEnabled(True)
 
     def _browse_video(self):
-        # Inicia el diálogo directamente en self.default_input
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Seleccionar archivo de vídeo",
-            self.default_input,
-            "Vídeos (*.mp4 *.mov *.avi *.mkv *.mpg *.mpeg *.wmv)"
-        )
+        base = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'raw', 'own_videos'))
+        file_path, _ = QFileDialog.getOpenFileName(self, "Seleccionar vídeo", base, "Vídeos (*.mp4 *.mov *.avi *.mkv)")
         if file_path:
-            self.txt_video.setText(file_path)
+            self._on_video_selected(file_path)
 
     def _browse_output(self):
-        # Inicia el diálogo directamente en self.default_output
-        folder = QFileDialog.getExistingDirectory(
-            self,
-            "Seleccionar carpeta de salida",
-            self.default_output
-        )
+        folder = QFileDialog.getExistingDirectory(self, "Seleccionar carpeta", self.edit_output.text())
         if folder:
-            self.txt_output.setText(folder)
+            self.edit_output.setText(folder)
 
-    def _on_start(self):
-        video_path = self.txt_video.text().strip()
-        output_dir = self.txt_output.text().strip()
-        sample_rate = self.spin_sample.value()
-        rotate = int(self.combo_rotate.currentText())
-        target_width = self.spin_width.value()
-        target_height = self.spin_height.value()
-        normalize = self.check_normalize.isChecked()
-
-        # Validaciones
-        if not video_path or not os.path.isfile(video_path):
-            QMessageBox.warning(self, "Falta vídeo", "Por favor, selecciona un archivo de vídeo válido.")
+    def _start_processing(self):
+        if not hasattr(self, 'video_path'):
             return
-        if not output_dir:
-            QMessageBox.warning(self, "Falta carpeta de salida", "Por favor, selecciona una carpeta de salida.")
-            return
-
-        # Si la carpeta de salida no existe, solicitar creación
-        if not os.path.isdir(output_dir):
-            respuesta = QMessageBox.question(
-                self, "Carpeta no existe",
-                f"La carpeta \"{output_dir}\" no existe.\n¿Deseas crearla?",
-                QMessageBox.Yes | QMessageBox.No
-            )
-            if respuesta == QMessageBox.Yes:
-                try:
-                    os.makedirs(output_dir, exist_ok=True)
-                except Exception as e:
-                    QMessageBox.critical(self, "Error", f"No se pudo crear la carpeta:\n{e}")
-                    return
-            else:
-                return
-
-        # Deshabilitar botón y limpiar logs
-        self.btn_start.setEnabled(False)
-        self.txt_logs.clear()
-
-        # Lanzar WorkerThread con todos los parámetros
-        self.worker = WorkerThread(
-            video_path,
-            output_dir,
-            sample_rate,
-            rotate,
-            target_width,
-            target_height,
-            normalize
+        out = self.edit_output.text().strip()
+        os.makedirs(out, exist_ok=True)
+        params = dict(
+            video_path=self.video_path,
+            output_dir=out,
+            sample_rate=self.spin_sample.value(),
+            rotate=int(self.combo_rotate.currentText()),
+            target_width=self.spin_width.value(),
+            target_height=self.spin_height.value(),
+            normalize=self.chk_norm.isChecked()
         )
-        self.worker.log_signal.connect(self._append_log)
+        self.worker = WorkerThread(**params)
+        self.worker.progress_signal.connect(self.progress_bar.setValue)
+        self.worker.error_signal.connect(lambda e: QMessageBox.critical(self, "Error", e))
         self.worker.finished_signal.connect(self._on_finished)
-        self.worker.error_signal.connect(self._on_error)
+        self.btn_process.setEnabled(False)
         self.worker.start()
 
     def _on_finished(self, metadata):
-        QMessageBox.information(
-            self, "Finalizado",
-            ("Extracción + Preprocesamiento completados:\n"
-             f"- FPS: {metadata['fps']:.2f}\n"
-             f"- Total fotogramas: {metadata['frame_count']}\n"
-             f"- Duración (s): {metadata['duration']:.2f}\n"
-             f"- Fotogramas guardados: {metadata['frames_saved']}")
-        )
-        self.btn_start.setEnabled(True)
-
-    def _on_error(self, err_msg):
-        QMessageBox.critical(self, "Error", f"Ocurrió un error:\n{err_msg}")
-        self.btn_start.setEnabled(True)
+        QMessageBox.information(self, "Finalizado",
+            f"Procesados {metadata['frames_saved']} frames en {metadata['duration']:.1f}s")
+        self.btn_process.setEnabled(True)
 
 
-# --------------------------------------------------------
-# Iniciar la app PyQt5
-# --------------------------------------------------------
-if __name__ == "__main__":
+if __name__ == '__main__':
     app = QApplication(sys.argv)
-    window = MainWindow()
-    window.show()
+    win = MainWindow()
+    win.show()
     sys.exit(app.exec_())

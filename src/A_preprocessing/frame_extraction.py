@@ -5,7 +5,7 @@
 Definiciones de extensiones de archivo aceptadas para vídeos e imágenes,
 y lógica de extracción + preprocesamiento de fotogramas con logging de depuración.
 
-Ahora cada frame SE REDIMENSIONA y/o SE NORMALIZA antes de guardarlo, 
+Cada frame SE REDIMENSIONA y/o SE NORMALIZA antes de guardarlo, 
 siguiendo parámetros: target_width, target_height y normalize.
 """
 
@@ -28,7 +28,7 @@ console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
 # --------------------------------------------------------
-# src/A_preprocessing/file_extensions.py (inlined aquí)
+# Extensiones de archivo aceptadas
 # --------------------------------------------------------
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".mpg", ".mpeg", ".wmv"}
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif"}
@@ -48,8 +48,10 @@ def extract_and_preprocess_frames(
     ):
     """
     Extrae 1 de cada `sample_rate` fotogramas de `video_path`, opcionalmente los rota,
-    los redimensiona a (target_width, target_height), normaliza si se pidió, 
-    y los guarda en `output_dir`. Devuelve metadata:
+    los redimensiona a (target_width, target_height), normaliza si se indica, 
+    y los guarda en `output_dir`.
+    
+    Devuelve metadata:
     {
         'fps': float,
         'frame_count': int,
@@ -64,7 +66,7 @@ def extract_and_preprocess_frames(
         - rotate        : grados de rotación (0, 90, 180, 270).
         - target_width  : ancho final de los frames (por defecto: 256).
         - target_height : alto final de los frames (por defecto: 256).
-        - normalize     : si es True, convierte el rango de píxel 0–255 a 0.0–1.0 y vuelve a 0–255 para guardarlo.
+        - normalize     : si es True, convierte el rango de píxel 0-255 a 0.0-1.0 y vuelve a 0-255 para guardarlo.
     """
     logger.debug("Iniciando extracción + preprocesamiento de fotogramas.")
     logger.debug(f"video_path = {video_path}")
@@ -75,7 +77,7 @@ def extract_and_preprocess_frames(
     # 1) Verificar que la extensión del vídeo sea válida
     ext = os.path.splitext(video_path)[1].lower()
     if ext not in VIDEO_EXTENSIONS:
-        msg = f"Extensión de vídeo no soportada: '{ext}'. Se esperan: {sorted(VIDEO_EXTENSIONS)}"
+        msg = f"Extensión de vídeo no soportada: '{ext}'. El archivo deber ser de tipo: {VIDEO_EXTENSIONS}"
         logger.error(msg)
         raise ValueError(msg)
 
