@@ -9,8 +9,10 @@ from PyQt5.QtCore import Qt, QSettings
 from PyQt5.QtGui import QPixmap, QImage, QFont
 
 # Importamos nuestros componentes personalizados
+from .style_utils import load_stylesheet
 from .widgets.video_display import VideoDisplayWidget
 from .worker import AnalysisWorker
+
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +22,6 @@ class MainWindow(QMainWindow):
         self.project_root = project_root
         self.video_path = None
         self.settings = QSettings("GymPerformance", "AnalyzerApp")
-
         self.setWindowTitle("Gym Performance Analyzer")
         self.resize(700, 650)
         self._init_ui()
@@ -64,24 +65,20 @@ class MainWindow(QMainWindow):
     def _create_settings_tab(self):
         widget = QWidget()
         layout = QFormLayout(widget)
-        
         self.output_dir_edit = QLineEdit()
         self.sample_rate_spin = QSpinBox(); self.sample_rate_spin.setMinimum(1)
         self.rotation_combo = QComboBox(); self.rotation_combo.addItems(["0","90","180","270"])
         self.width_spin = QSpinBox(); self.width_spin.setRange(16,4096)
         self.height_spin = QSpinBox(); self.height_spin.setRange(16,4096)
-        
         self.use_crop_check = QCheckBox("Usar recorte centrado (más preciso)")
         self.generate_video_check = QCheckBox("Generar vídeo de depuración con esqueleto")
         self.debug_mode_check = QCheckBox("Modo Depuración (guarda CSVs intermedios)")
         self.dark_mode_check = QCheckBox("Modo oscuro")
         self.dark_mode_check.stateChanged.connect(self._toggle_theme)
-
         h_layout = QHBoxLayout()
         h_layout.addWidget(self.width_spin)
         h_layout.addWidget(QLabel("x"))
         h_layout.addWidget(self.height_spin)
-
         layout.addRow("Carpeta base de salida:", self.output_dir_edit)
         layout.addRow("Sample Rate (1 de cada N frames):", self.sample_rate_spin)
         layout.addRow("Rotación (°):", self.rotation_combo)
@@ -90,7 +87,6 @@ class MainWindow(QMainWindow):
         layout.addRow(self.generate_video_check)
         layout.addRow(self.debug_mode_check)
         layout.addRow(self.dark_mode_check)
-        
         return widget
     
     def _on_video_selected(self, path):
@@ -169,8 +165,7 @@ class MainWindow(QMainWindow):
 
     def _toggle_theme(self, state):
         is_dark = (state == Qt.Checked)
-        QApplication.instance().setProperty("darkMode", is_dark)
-        # Aquí iría la lógica para recargar/cambiar el stylesheet
+        load_stylesheet(QApplication.instance(), self.project_root, dark=is_dark)
         
     def closeEvent(self, event):
         self.settings.setValue("output_dir", self.output_dir_edit.text())

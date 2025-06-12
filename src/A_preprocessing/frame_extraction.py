@@ -3,11 +3,9 @@
 import cv2
 import os
 import logging
-import numpy as np
+from src import config
 
 logger = logging.getLogger(__name__)
-
-VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".mpg", ".mpeg", ".wmv"}
 
 def extract_and_preprocess_frames(
         video_path,
@@ -22,7 +20,7 @@ def extract_and_preprocess_frames(
     logger.info(f"Iniciando extracción y rotación para: {video_path}")
 
     ext = os.path.splitext(video_path)[1].lower()
-    if ext not in VIDEO_EXTENSIONS:
+    if ext not in config.VIDEO_EXTENSIONS:
         raise ValueError(f"Extensión de vídeo no soportada: '{ext}'.")
 
     cap = cv2.VideoCapture(video_path)
