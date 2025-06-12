@@ -224,8 +224,7 @@ def calculate_metrics_from_sequence(sequence: np.ndarray, fps: float):
     if dfm.empty: return dfm
 
     # Calcular velocidades y simetrías
-    
-    dfm_filled = dfm.fillna(method='ffill').fillna(method='bfill')
+    dfm_filled = dfm.ffill().bfill()
     for col in ['rodilla_izq', 'rodilla_der', 'codo_izq', 'codo_der']:
         dfm[f"vel_ang_{col}"] = calculate_angular_velocity(dfm_filled[col].tolist(), fps)
         

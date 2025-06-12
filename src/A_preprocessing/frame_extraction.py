@@ -13,22 +13,13 @@ def extract_and_preprocess_frames(
         video_path,
         sample_rate=1,
         rotate=0,
-        target_width=256,
-        target_height=256,
         progress_callback=None
     ):
     """
-    Extrae fotogramas de un vídeo, los preprocesa (rota, redimensiona)
-    y los devuelve como una lista de imágenes en memoria.
-
-    Devuelve:
-    ----------
-    (list[np.ndarray], float)
-        Una tupla conteniendo:
-        - Una lista de fotogramas (imágenes como arrays de NumPy en formato BGR).
-        - Los FPS (fotogramas por segundo) del vídeo original.
+    Extrae fotogramas de un vídeo, opcionalmente los rota y los devuelve
+    como una lista de imágenes en memoria A TAMAÑO COMPLETO.
     """
-    logger.info(f"Iniciando extracción y preprocesamiento para: {video_path}")
+    logger.info(f"Iniciando extracción y rotación para: {video_path}")
 
     ext = os.path.splitext(video_path)[1].lower()
     if ext not in VIDEO_EXTENSIONS:
@@ -42,7 +33,7 @@ def extract_and_preprocess_frames(
     frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     logger.info(f"Propiedades del vídeo: {frame_count} frames, {fps:.2f} FPS")
 
-    processed_frames = []
+    original_frames = []
     idx = 0
     last_percent_done = -1
 
@@ -64,14 +55,12 @@ def extract_and_preprocess_frames(
                 frame = cv2.rotate(frame, cv2.ROTATE_180)
             elif rotate == 270:
                 frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
-
-            frame = cv2.resize(frame, (target_width, target_height), interpolation=cv2.INTER_AREA)
             
-            processed_frames.append(frame)
+            original_frames.append(frame)
         
         idx += 1
 
     cap.release()
-    logger.info(f"Proceso completado. Se han extraído y preprocesado {len(processed_frames)} fotogramas en memoria.")
+    logger.info(f"Proceso completado. Se han extraído {len(original_frames)} fotogramas en memoria.")
 
-    return processed_frames, fps
+    return original_frames, fps

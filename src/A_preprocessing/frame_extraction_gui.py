@@ -149,6 +149,11 @@ class MainWindow(QMainWindow):
         self.he = QSpinBox(); self.he.setRange(16,4096)
         self.use_crop_check = QCheckBox("Usar recorte centrado (más preciso)")
         self.use_crop_check.setToolTip("Realiza una detección en dos pasadas para centrarse en la persona. Más lento pero más preciso.")
+        
+        # --- Checkbox para generar el vídeo ---
+        self.generate_video_check = QCheckBox("Generar vídeo de depuración con esqueleto")
+        self.generate_video_check.setToolTip("Crea un archivo .mp4 con el esqueleto dibujado para verificar la detección.")
+
         self.dark_mode = QCheckBox("Modo oscuro")
         self.dark_mode.stateChanged.connect(self._toggle_theme)
         h_layout = QHBoxLayout()
@@ -160,6 +165,7 @@ class MainWindow(QMainWindow):
         layout.addRow("Rotación (°):", self.rotate)
         layout.addRow("Ancho/Alto (px) de preproceso:", h_layout)
         layout.addRow(self.use_crop_check)
+        layout.addRow(self.generate_video_check)
         layout.addRow(self.dark_mode)
         return widget
 
@@ -192,6 +198,7 @@ class MainWindow(QMainWindow):
             'target_width': self.wi.value(),
             'target_height': self.he.value(),
             'use_crop': self.use_crop_check.isChecked(),
+            'generate_debug_video': self.generate_video_check.isChecked()
         }
         self.worker = WorkerThread(self.video_path, settings)
         self.worker.progress_signal.connect(self.progress.setValue)
@@ -228,6 +235,7 @@ class MainWindow(QMainWindow):
         self.wi.setValue(self.settings.value("width", 256, type=int))
         self.he.setValue(self.settings.value("height", 256, type=int))
         self.use_crop_check.setChecked(self.settings.value("use_crop", True, type=bool))
+        self.generate_video_check.setChecked(self.settings.value("generate_debug_video", False, type=bool))
         is_dark = self.settings.value("dark_mode", False, type=bool)
         self.dark_mode.setChecked(is_dark)
         self._toggle_theme(Qt.Checked if is_dark else Qt.Unchecked)
@@ -239,6 +247,7 @@ class MainWindow(QMainWindow):
         self.settings.setValue("width", self.wi.value())
         self.settings.setValue("height", self.he.value())
         self.settings.setValue("use_crop", self.use_crop_check.isChecked())
+        self.settings.setValue("generate_debug_video", self.generate_video_check.isChecked())
         self.settings.setValue("dark_mode", self.dark_mode.isChecked())
         super().closeEvent(event)
 
@@ -250,6 +259,8 @@ class MainWindow(QMainWindow):
     def _open_dir(self):
         d = QFileDialog.getExistingDirectory(self, "Seleccionar carpeta", self.out_edit.text())
         if d: self.out_edit.setText(d)
+
+    
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
