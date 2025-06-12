@@ -16,7 +16,7 @@ DEFAULT_TARGET_HEIGHT = 256
 
 # --- PARÁMETROS DE CONTEO ---
 SQUAT_HIGH_THRESH = 160.0
-SQUAT_LOW_THRESH = 90.0
+SQUAT_LOW_THRESH = 100.0
 PEAK_PROMINENCE = 10  # Prominencia para el detector de picos
 PEAK_DISTANCE = 15    # Distancia mínima en frames entre repeticiones
 

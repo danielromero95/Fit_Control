@@ -48,11 +48,22 @@ class MainWindow(QMainWindow):
         widget = QWidget()
         layout = QVBoxLayout(widget)
         
+        # --- Contenedor para la preview con altura fija ---
+        video_container = QWidget()
+        video_container.setFixedHeight(400) # El contenedor tiene la altura fija
+        video_container_layout = QVBoxLayout(video_container)
+        video_container_layout.setContentsMargins(0,0,0,0)
+        
+        # El widget de la imagen va dentro del contenedor
         self.video_display = VideoDisplayWidget()
         self.video_display.file_dropped.connect(self._on_video_selected)
         self.video_display.rotation_requested.connect(self._on_rotation_requested)
-        layout.addWidget(self.video_display)
+        video_container_layout.addWidget(self.video_display)
+        
+        # Añadimos el contenedor al layout principal de la pestaña
+        layout.addWidget(video_container)
 
+        # --- Resto de widgets ---
         self.select_video_btn = QPushButton("Seleccionar vídeo")
         self.select_video_btn.clicked.connect(self._open_file_dialog)
         layout.addWidget(self.select_video_btn)
