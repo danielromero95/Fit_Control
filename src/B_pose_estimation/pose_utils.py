@@ -12,7 +12,6 @@ Las clases y funciones están diseñadas para operar con objetos de Python (NumP
 en lugar de leer/escribir archivos intermedios, permitiendo su uso en pipelines
 de memoria como el de la GUI principal.
 """
-import os
 import cv2
 import numpy as np
 import math
@@ -156,10 +155,7 @@ def extract_landmarks_from_frames(frames: list, use_crop: bool = False, visibili
                 row[f"v{lm_idx}"] = pt['visibility']
         else: # Si no se detectan landmarks, rellenar con NaN
             for lm_idx in range(33):
-                row[f"x{lm_idx}"] = float("nan")
-                row[f"y{lm_idx}"] = float("nan")
-                row[f"z{lm_idx}"] = float("nan")
-                row[f"v{lm_idx}"] = float("nan")
+                row.update({f"x{lm_idx}": np.nan, f"y{lm_idx}": np.nan, f"z{lm_idx}": np.nan, f"v{lm_idx}": np.nan})
         rows.append(row)
         
     estimator.close()
@@ -174,8 +170,8 @@ def filter_and_interpolate_landmarks(df_raw: pd.DataFrame, min_confidence: float
     n_frames = len(df_raw)
     n_points = 33
     
-    # Pre-aloja arrays de NumPy para eficiencia
-    arr = np.full((n_frames, n_points, 3), np.nan, dtype=float) # x, y, visibility
+    # El array tiene 4 columnas: x, y, z, visibility
+    arr = np.full((n_frames, n_points, 4), np.nan, dtype=float)
     
     # Poblar el array con datos válidos del DataFrame
     for t, (_, row) in enumerate(df_raw.iterrows()):
@@ -184,7 +180,8 @@ def filter_and_interpolate_landmarks(df_raw: pd.DataFrame, min_confidence: float
             if pd.notna(visibility) and visibility >= min_confidence:
                 arr[t, i, 0] = row.get(f"x{i}")
                 arr[t, i, 1] = row.get(f"y{i}")
-                arr[t, i, 2] = visibility
+                arr[t, i, 2] = row.get(f"z{i}")
+                arr[t, i, 3] = visibility
 
     # Interpolar cada coordenada de landmark a lo largo del tiempo
     for i in range(n_points):
@@ -192,19 +189,13 @@ def filter_and_interpolate_landmarks(df_raw: pd.DataFrame, min_confidence: float
         valid_indices = np.where(valid_mask)[0]
         if len(valid_indices) > 1: # Se necesita más de un punto para interpolar
             interp_indices = np.arange(n_frames)
-            arr[:, i, 0] = np.interp(interp_indices, valid_indices, arr[valid_indices, i, 0])
-            arr[:, i, 1] = np.interp(interp_indices, valid_indices, arr[valid_indices, i, 1])
+            for j in range(3): # Interpolar X, Y, y Z
+                arr[:, i, j] = np.interp(interp_indices, valid_indices, arr[valid_indices, i, j])
 
     # Reconstruir la lista de diccionarios desde el array de NumPy
     filtered_sequence = []
     for t in range(n_frames):
-        frame_landmarks = []
-        for i in range(n_points):
-            # Usar la visibilidad original (o NaN si nunca fue válida)
-            visibility = arr[t, i, 2] if pd.notna(arr[t, i, 2]) else 0.0
-            frame_landmarks.append({
-                'x': arr[t, i, 0], 'y': arr[t, i, 1], 'visibility': visibility
-            })
+        frame_landmarks = [{'x': arr[t, i, 0], 'y': arr[t, i, 1], 'z': arr[t, i, 2], 'visibility': arr[t, i, 3] if pd.notna(arr[t, i, 3]) else 0.0} for i in range(n_points)]
         filtered_sequence.append(frame_landmarks)
         
     return np.array(filtered_sequence, dtype=object)
@@ -218,6 +209,7 @@ def calculate_metrics_from_sequence(sequence: np.ndarray, fps: float):
     all_metrics = []
     for idx, frame_landmarks in enumerate(sequence):
         row = {"frame_idx": idx}
+        # Comprobamos si el primer landmark es inválido como indicador de todo el frame
         if frame_landmarks is None or pd.isna(frame_landmarks[0]['x']):
             row.update({ 'rodilla_izq': np.nan, 'rodilla_der': np.nan, 'codo_izq': np.nan, 'codo_der': np.nan, 'anchura_hombros': np.nan, 'separacion_pies': np.nan })
         else:
@@ -232,14 +224,13 @@ def calculate_metrics_from_sequence(sequence: np.ndarray, fps: float):
     if dfm.empty: return dfm
 
     # Calcular velocidades y simetrías
-    dfm["vel_ang_rod_izq"] = calculate_angular_velocity(dfm["rodilla_izq"].fillna(method='ffill').fillna(method='bfill').tolist(), fps)
-    dfm["vel_ang_rod_der"] = calculate_angular_velocity(dfm["rodilla_der"].fillna(method='ffill').fillna(method='bfill').tolist(), fps)
-    dfm["vel_ang_codo_izq"] = calculate_angular_velocity(dfm["codo_izq"].fillna(method='ffill').fillna(method='bfill').tolist(), fps)
-    dfm["vel_ang_codo_der"] = calculate_angular_velocity(dfm["codo_der"].fillna(method='ffill').fillna(method='bfill').tolist(), fps)
     
-    dfm["sim_rodilla"] = dfm.apply(lambda row: calculate_symmetry(row['rodilla_izq'], row['rodilla_der']), axis=1)
-    dfm["sim_codo"] = dfm.apply(lambda row: calculate_symmetry(row['codo_izq'], row['codo_der']), axis=1)
-    
+    dfm_filled = dfm.fillna(method='ffill').fillna(method='bfill')
+    for col in ['rodilla_izq', 'rodilla_der', 'codo_izq', 'codo_der']:
+        dfm[f"vel_ang_{col}"] = calculate_angular_velocity(dfm_filled[col].tolist(), fps)
+        
+    dfm["sim_rodilla"] = dfm.apply(lambda r: calculate_symmetry(r['rodilla_izq'], r['rodilla_der']), axis=1)
+    dfm["sim_codo"] = dfm.apply(lambda r: calculate_symmetry(r['codo_izq'], r['codo_der']), axis=1)
     return dfm
 
 # =================================================================================

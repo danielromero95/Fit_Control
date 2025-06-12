@@ -21,6 +21,7 @@ data/processed/
 
 # Logs
 *.log
+*.logs
 
 # Otros
 .DS_Store
