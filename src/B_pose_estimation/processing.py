@@ -1,8 +1,5 @@
 # src/B_pose_estimation/processing.py
-"""
-Contiene las funciones de alto nivel que orquestan el pipeline de pose.
-Responsabilidad: procesar datos de una fase a la siguiente.
-"""
+
 import numpy as np
 import pandas as pd
 import logging
@@ -23,11 +20,19 @@ def extract_landmarks_from_frames(frames: list, use_crop: bool = False, visibili
             landmarks, _, crop_box = estimator.estimate(img)
         else:
             landmarks, _ = estimator.estimate(img)
+            # --- ¡CAMBIO CLAVE! ---
+            # Si no usamos crop, el "crop box" es la imagen entera.
+            # Esto asegura que siempre tengamos esta información para el renderizador.
+            if landmarks:
+                h, w, _ = img.shape
+                crop_box = [0, 0, w, h]
         
         row = {"frame_idx": i}
         if landmarks:
             for lm_idx, pt in enumerate(landmarks):
                 row.update({f"x{lm_idx}": pt['x'], f"y{lm_idx}": pt['y'], f"z{lm_idx}": pt['z'], f"v{lm_idx}": pt['visibility']})
+            
+            # Ahora este bloque funcionará en ambos casos
             if crop_box:
                 row.update({'crop_x1': crop_box[0], 'crop_y1': crop_box[1], 'crop_x2': crop_box[2], 'crop_y2': crop_box[3]})
         else:
@@ -84,6 +89,7 @@ def calculate_metrics_from_sequence(sequence: np.ndarray, fps: float) -> pd.Data
     dfm = pd.DataFrame(all_metrics)
     if dfm.empty: return dfm
     
+    # Corregir advertencia de fillna
     dfm_filled = dfm.ffill().bfill()
     for col in ['rodilla_izq', 'rodilla_der', 'codo_izq', 'codo_der']:
         dfm[f"vel_ang_{col}"] = calculate_angular_velocity(dfm_filled[col].tolist(), fps)
