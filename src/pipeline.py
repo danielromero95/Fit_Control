@@ -86,11 +86,19 @@ def run_full_pipeline_in_memory(video_path: str, settings: dict, progress_callba
             result = estimator.estimate(frame)
             estimation_results.append(result)
 
-        # FASES 3,4,5: análisis de métricas y conteo de repeticiones
-        if config.USE_3D_ANALYSIS and callable(calculate_3d_metrics) and callable(count_reps_3d):
-            notify(75, "FASE 3/4/5 (3D): Calculando métricas 3D y contando repeticiones...")
+        if config.USE_3D_ANALYSIS:
+            # --- LÓGICA PARA EL MODO 3D ---
+            notify(75, "FASE 3/4/5 (3D): Analizando métricas 3D y contando repeticiones...")
+
+            # --- CAMBIO CLAVE: Pasamos los umbrales desde settings/config ---
             df_metrics = calculate_3d_metrics(estimation_results, fps)
-            n_reps, faults_detected = count_reps_3d(df_metrics)
+            n_reps, faults_detected = count_reps_3d(
+                df_metrics,
+                up_thresh=settings.get('high_thresh', config.SQUAT_HIGH_THRESH),
+                down_thresh=settings.get('low_thresh', config.SQUAT_LOW_THRESH),
+                depth_fail_thresh=settings.get('depth_fail_thresh', 90.0) # Umbral de fallo de profundidad
+            )
+
         else:
             # Lógica 2D actual
             notify(75, "FASE 3 (2D): Filtrando e interpolando landmarks...")

@@ -63,17 +63,16 @@ def calculate_3d_metrics(estimation_results: List[EstimationResult], fps: int) -
 
 
 def count_reps_3d(df_metrics: pd.DataFrame, 
-                  angle_column: str = 'knee_angle_3d',
-                  up_thresh: float = 160.0, 
-                  down_thresh: float = 100.0,
+                  up_thresh: float, 
+                  down_thresh: float,
                   depth_fail_thresh: float = 90.0) -> Tuple[int, List[dict]]:
     """
     Cuenta repeticiones y detecta fallos básicos usando métricas 3D.
     """
-    if df_metrics.empty or angle_column not in df_metrics.columns:
+    if df_metrics.empty or 'rodilla_izq' not in df_metrics.columns:
         return 0, []
 
-    df_metrics = df_metrics.dropna(subset=[angle_column]).copy()
+    df_metrics = df_metrics.dropna(subset=['rodilla_izq']).copy()
     if df_metrics.empty:
         return 0, []
 
@@ -82,11 +81,8 @@ def count_reps_3d(df_metrics: pd.DataFrame,
     state = 'up'
     min_angle_in_rep = 180.0
 
-    # --- LÍNEA CORREGIDA AQUÍ ---
-    # Recibimos cada fila como un único objeto 'row'
     for row in df_metrics.itertuples():
-        # Accedemos al ángulo de la rodilla usando el nombre de la columna
-        angle = row.knee_angle_3d
+        angle = row.rodilla_izq
         
         if state == 'up' and angle < down_thresh:
             state = 'down'

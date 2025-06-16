@@ -5,7 +5,6 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QListWidg
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 
-# --- CAMBIO CLAVE 1: Corregimos el nombre de la clase importada ---
 from .video_player import VideoPlayerWidget
 from .plot_widget import PlotWidget
 from src.gui.gui_utils import get_first_available_series
@@ -20,7 +19,6 @@ class ResultsPanel(QWidget):
     def init_ui(self):
         main_layout = QHBoxLayout(self)
 
-        # --- CAMBIO CLAVE 2: Usamos el nombre correcto de la clase ---
         self.video_player = VideoPlayerWidget(self)
         main_layout.addWidget(self.video_player, 2)
 
