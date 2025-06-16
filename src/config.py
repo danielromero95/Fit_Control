@@ -1,43 +1,50 @@
-# src/config.py
-"""
-Archivo de Configuración Centralizado
-"""
+# Contenido completo y correcto para: src/config.py
 
-# Flag para activar el nuevo análisis 3D. Si es False, usará el estimador 2D antiguo.
-USE_3D_ANALYSIS = True
+import yaml
+from pydantic import BaseModel, Field
+import logging
+import os
 
-# --- CONFIGURACIÓN GENERAL ---
-APP_NAME = "Gym Performance Analyzer"
-ORGANIZATION_NAME = "GymPerformance"
-VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".mpg", ".mpeg", ".wmv"}
+logger = logging.getLogger(__name__)
 
-# --- PARÁMETROS DEL PIPELINE ---
-MODEL_COMPLEXITY = 1
-MIN_DETECTION_CONFIDENCE = 0.5
-DEFAULT_TARGET_WIDTH = 256
-DEFAULT_TARGET_HEIGHT = 256
+# --- 1. Definición de la Estructura de la Configuración con Pydantic ---
+class AnalysisParams(BaseModel):
+    use_3d_analysis: bool = Field(True, description="Activa el pipeline de análisis 3D.")
+    generate_debug_video: bool = Field(True, description="Genera un vídeo con los landmarks.")
+    debug_mode: bool = Field(False, description="Guarda ficheros intermedios de datos.")
 
-# --- PARÁMETROS DE CONTEO ---
-SQUAT_HIGH_THRESH = 140.0
-SQUAT_LOW_THRESH = 80.0
-PEAK_PROMINENCE = 10  # Prominencia para el detector de picos
-PEAK_DISTANCE = 15    # Distancia mínima en frames entre repeticiones
+class SquatParams(BaseModel):
+    high_thresh: float = Field(160.0, description="Umbral de ángulo para la posición 'arriba'.")
+    low_thresh: float = Field(100.0, description="Umbral de ángulo para la posición 'abajo'.")
+    depth_fail_thresh: float = Field(90.0, description="Umbral para el fallo de profundidad.")
+    
+    peak_prominence: float = Field(10.0, description="Prominencia para el detector de picos.")
+    peak_distance: int = Field(15, description="Distancia mínima en frames entre repeticiones.")
 
-# --- CONFIGURACIÓN DE VISUALIZACIÓN ---
-POSE_CONNECTIONS = [
-    (0, 1), (1, 2), (2, 3), (3, 7), (0, 4), (4, 5), (5, 6), (6, 8), (9, 10), 
-    (11, 12), (11, 13), (13, 15), (15, 17), (15, 19), (15, 21), (12, 14), 
-    (14, 16), (16, 18), (16, 20), (16, 22), (11, 23), (12, 24), (23, 24), 
-    (23, 25), (25, 27), (27, 29), (27, 31), (24, 26), (26, 28), (28, 30), 
-    (28, 32), (29, 31), (30, 32)
-]
-LANDMARK_COLOR = (0, 255, 0)  # Verde
-CONNECTION_COLOR = (0, 0, 255) # Rojo
+class AppConfig(BaseModel):
+    """Modelo principal que contiene toda la configuración de la aplicación."""
+    analysis_params: AnalysisParams
+    squat_params: SquatParams
 
-# --- VALORES POR DEFECTO DE LA GUI ---
-DEFAULT_SAMPLE_RATE = 3
-DEFAULT_ROTATION = "0"
-DEFAULT_USE_CROP = True
-DEFAULT_GENERATE_VIDEO = True
-DEFAULT_DEBUG_MODE = True
-DEFAULT_DARK_MODE = False
+
+# --- 2. Función para Cargar la Configuración ---
+def load_config(config_path: str = "config.yaml") -> AppConfig:
+    """
+    Carga la configuración desde un fichero YAML y la valida con Pydantic.
+    """
+    if not os.path.exists(config_path):
+        raise FileNotFoundError(f"El fichero de configuración '{config_path}' no se encontró. Asegúrate de que está en la raíz del proyecto.")
+
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config_data = yaml.safe_load(f)
+        
+        config = AppConfig(**config_data)
+        logger.info(f"Configuración cargada y validada correctamente desde '{config_path}'.")
+        return config
+    except Exception as e:
+        logger.error(f"Error al cargar o validar la configuración desde '{config_path}': {e}")
+        raise
+
+# --- 3. Objeto de Configuración Global que se importará en otros módulos ---
+settings = load_config()

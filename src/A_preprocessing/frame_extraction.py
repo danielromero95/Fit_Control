@@ -1,67 +1,63 @@
-# src/A_preprocessing/frame_extraction.py (Versión con auto-rotación)
+# src/A_preprocessing/frame_extraction.py
 
 import cv2
 import os
 import logging
-from src import config
-from .video_metadata import get_video_rotation
+from typing import List, Tuple, Optional
+
+# --- CAMBIO CLAVE: Importamos la constante desde el fichero correcto ---
+from src.constants import VIDEO_EXTENSIONS
 
 logger = logging.getLogger(__name__)
 
 def extract_and_preprocess_frames(
-        video_path,
-        sample_rate=1,
-        # --- CAMBIO: 'rotate' ahora es opcional. Si es None, se auto-detecta ---
-        rotate: int | None = None,
-        progress_callback=None
-    ):
+    video_path: str, 
+    rotate: Optional[int] = None, 
+    sample_rate: int = 1
+) -> Tuple[List, float]:
     """
-    Extrae fotogramas, detecta y aplica la rotación automáticamente,
-    y los devuelve como una lista de imágenes en memoria A TAMAÑO COMPLETO.
+    Extrae fotogramas de un vídeo, los rota si es necesario y aplica un sample rate.
     """
-    logger.info(f"Iniciando extracción para: {video_path}")
-
     ext = os.path.splitext(video_path)[1].lower()
-    if ext not in config.VIDEO_EXTENSIONS:
-        raise ValueError(f"Extensión de vídeo no soportada: '{ext}'.")
+    
+    # La comprobación ahora usa la constante importada directamente
+    if ext not in VIDEO_EXTENSIONS:
+        raise ValueError(f"Formato de vídeo no soportado: {ext}. Soportados: {VIDEO_EXTENSIONS}")
 
-    # --- CAMBIO: Detectamos la rotación si no se ha especificado una manualmente ---
-    if rotate is None:
-        rotate = get_video_rotation(video_path)
+    if not os.path.exists(video_path):
+        raise FileNotFoundError(f"El fichero de vídeo no se encuentra en la ruta: {video_path}")
 
+    logger.info(f"Iniciando extracción para: {video_path}")
     cap = cv2.VideoCapture(video_path)
+    
     if not cap.isOpened():
-        raise IOError(f"No se pudo abrir el vídeo: {video_path}")
+        raise IOError(f"No se pudo abrir el fichero de vídeo: {video_path}")
 
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     fps = cap.get(cv2.CAP_PROP_FPS)
-    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    logger.info(f"Propiedades del vídeo: {frame_count} frames, {fps:.2f} FPS")
+    logger.info(f"Propiedades del vídeo: {total_frames} frames, {fps:.2f} FPS")
 
-    original_frames = []
-    idx = 0
-    last_percent_done = -1
-
+    frames = []
+    frame_count = 0
     while True:
         ret, frame = cap.read()
-        if not ret: break
+        if not ret:
+            break
 
-        if progress_callback and frame_count > 0:
-            percent_done = int((idx / frame_count) * 100)
-            if percent_done > last_percent_done:
-                progress_callback(percent_done)
-                last_percent_done = percent_done
-
-        if idx % sample_rate == 0:
-            if rotate == 90:
-                frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
-            elif rotate == 180:
-                frame = cv2.rotate(frame, cv2.ROTATE_180)
-            elif rotate == 270:
-                frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
-            original_frames.append(frame)
+        if frame_count % sample_rate == 0:
+            if rotate and rotate != 0:
+                # Mapeamos los grados a las constantes de rotación de OpenCV
+                if rotate == 90:
+                    frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+                elif rotate == 180:
+                    frame = cv2.rotate(frame, cv2.ROTATE_180)
+                elif rotate == 270:
+                    frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
+            
+            frames.append(frame)
         
-        idx += 1
+        frame_count += 1
 
     cap.release()
-    logger.info(f"Proceso completado. Se han extraído {len(original_frames)} fotogramas en memoria.")
-    return original_frames, fps
+    logger.info(f"Proceso completado. Se han extraído {len(frames)} fotogramas en memoria.")
+    return frames, fps
