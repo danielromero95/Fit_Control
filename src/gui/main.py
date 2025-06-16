@@ -22,22 +22,25 @@ def setup_logging(project_root):
     os.makedirs(log_dir, exist_ok=True)
     logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s', handlers=[logging.FileHandler(os.path.join(log_dir, 'app.log'), encoding='utf-8'), logging.StreamHandler(sys.stdout)])
 
-if __name__ == '__main__':
-    PROJECT_ROOT = find_project_root()
-    setup_logging(PROJECT_ROOT)
-
-    src_path = os.path.join(PROJECT_ROOT, 'src')
-    if src_path not in sys.path:
-        sys.path.insert(0, src_path)
+def run_app():
+    """Función para encapsular la creación y ejecución de la app."""
+    # Añadimos el path del proyecto para que los imports desde 'src' funcionen bien
+    PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    sys.path.insert(0, PROJECT_ROOT)
     
-    from gui.main_window import MainWindow
+    # Importamos MainWindow aquí dentro para asegurar que el path está configurado
+    from src.gui.main_window import MainWindow
+    from src.gui.style_utils import load_stylesheet
 
     app = QApplication(sys.argv)
     
-    settings = QSettings("GymPerformance", "AnalyzerApp")
-    is_dark_mode = settings.value("dark_mode", False, type=bool)
-    load_stylesheet(app, PROJECT_ROOT, dark=is_dark_mode)
+    # La carga del stylesheet ahora puede usar la ruta del proyecto
+    load_stylesheet(app, PROJECT_ROOT, dark=True) 
 
     window = MainWindow(project_root=PROJECT_ROOT)
     window.show()
     sys.exit(app.exec_())
+
+if __name__ == "__main__":
+    # Esta es la única parte que se ejecuta cuando lanzas el script directamente
+    run_app()

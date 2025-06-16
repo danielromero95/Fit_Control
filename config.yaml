@@ -3,20 +3,27 @@
 
 # --- Parámetros Generales del Análisis ---
 analysis_params:
-  use_3d_analysis: True  # Poner en 'False' para usar el pipeline 2D antiguo
+  use_3d_analysis: True
   generate_debug_video: True
-  debug_mode: True
+  debug_mode: False
 
 # --- Parámetros del Ejercicio: Sentadilla (Squat) ---
 squat_params:
-  # Umbrales para el conteo de repeticiones (en grados)
   high_thresh: 140.0
   low_thresh: 80.0
+  depth_fail_thresh: 90.0
   peak_prominence: 10.0
   peak_distance: 15
-  
-  # Umbral para el fallo de profundidad (si el ángulo mínimo no baja de esto, es un fallo)
-  depth_fail_thresh: 90.0
 
-# --- Parámetros de la GUI ---
-# (Se podrían añadir en el futuro, como colores, temas, etc.)
+# --- Parámetros de Rendimiento y Procesamiento ---
+performance_params:
+  max_workers: 14
+  preprocess_size: [480, 854]
+
+# --- Parámetros para la visualización de landmarks ---
+drawing_params:
+  # Colores en formato BGR (Azul, Verde, Rojo)
+  line_color_bgr: [0, 255, 0]   # Verde para las líneas del esqueleto
+  point_color_bgr: [0, 0, 255]  # Rojo para los puntos (landmarks)
+  line_thickness: 2
+  point_radius: 5

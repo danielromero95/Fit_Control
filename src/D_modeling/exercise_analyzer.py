@@ -26,7 +26,6 @@ logger = logging.getLogger(__name__)
 def calculate_metrics(estimation_results: List[EstimationResult], fps: int) -> pd.DataFrame:
     """
     Función unificada para calcular métricas clave a partir de los resultados de estimación.
-    Distingue entre datos 3D y 2D basándose en la disponibilidad de world_landmarks.
     """
     if not PoseLandmark:
         logger.error("MediaPipe no está disponible para calcular métricas.")
@@ -36,17 +35,13 @@ def calculate_metrics(estimation_results: List[EstimationResult], fps: int) -> p
     is_3d_mode = any(res.world_landmarks for res in estimation_results if res)
 
     for frame_idx, result in enumerate(estimation_results):
-        # Usamos los landmarks de la pantalla si no hay resultado o si no estamos en modo 3D
         landmarks_source = result.world_landmarks if is_3d_mode and result.world_landmarks else result.landmarks
         if not landmarks_source:
             continue
-
-        # --- CAMBIO CLAVE: Construimos el diccionario de forma correcta ---
-        # Iteramos sobre el enumerado PoseLandmark para obtener el nombre y el índice (valor)
-        # y lo usamos para acceder al landmark correspondiente en la lista de resultados.
+        
+        # Esta construcción de diccionario ya es correcta
         landmarks = {lm_name.name: landmarks_source[lm_name.value] for lm_name in PoseLandmark}
         
-        # El resto de la lógica ya es correcta
         left_shoulder = landmarks.get('LEFT_SHOULDER')
         left_hip = landmarks.get('LEFT_HIP')
         left_knee = landmarks.get('LEFT_KNEE')
@@ -55,7 +50,9 @@ def calculate_metrics(estimation_results: List[EstimationResult], fps: int) -> p
         if all([left_shoulder, left_hip, left_knee, left_ankle]):
             knee_angle = calculate_angle_3d(left_hip, left_knee, left_ankle)
             hip_angle = calculate_angle_3d(left_shoulder, left_hip, left_knee)
-            hip_height = left_hip.y
+            
+            # --- Usamos acceso por clave ['y'] en lugar de .y ---
+            hip_height = left_hip['y']
         else:
             knee_angle, hip_angle, hip_height = None, None, None
 
