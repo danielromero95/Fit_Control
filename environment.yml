@@ -1,19 +1,30 @@
-name: gym_performance_env
+# environment.yml
+# Entorno de Conda unificado para la aplicación Gym Performance Analyzer.
+# Para crearlo: conda env create -f environment.yml
+# Para actualizarlo: conda env update -f environment.yml --prune
+
+name: gym_env  # Un nuevo nombre limpio para el entorno final
+
 channels:
-  - pytorch
-  - conda-forge
   - defaults
+  - conda-forge
+
 dependencies:
+  # --- Core ---
   - python=3.10
-  - opencv          # Nota: en conda se instala como "opencv" en lugar de "opencv-python"
-  - pandas>=1.3
-  - numpy>=1.21
-  - scikit-learn>=1.0
-  - tensorflow>=2.7
-  - pytorch>=1.10  # Instalado desde el canal "pytorch"
-  - pytest>=6.2
-  - pip            # Necesario para que funcione el apartado pip:
+  - pip
+
+  # --- Backend & Data Processing ---
+  - numpy
+  - pandas
+  - opencv
+  - scipy  # Para el conteo de repeticiones con find_peaks
+
+  # --- GUI ---
+  - pyqt=5
+
+  # --- Dependencias instaladas con Pip ---
   - pip:
-    - mediapipe>=0.9
-    - mlflow>=1.26
-    - streamlit>=1.10
+    - mediapipe==0.10.21
+    - moviepy==1.0.3
+    - matplotlib  # Para las gráficas en la GUI
