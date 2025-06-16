@@ -3,6 +3,9 @@
 Archivo de Configuración Centralizado
 """
 
+# Flag para activar el nuevo análisis 3D. Si es False, usará el estimador 2D antiguo.
+USE_3D_ANALYSIS = True
+
 # --- CONFIGURACIÓN GENERAL ---
 APP_NAME = "Gym Performance Analyzer"
 ORGANIZATION_NAME = "GymPerformance"

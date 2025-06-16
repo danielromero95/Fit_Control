@@ -1,43 +1,48 @@
 # src/gui/widgets/plot_widget.py
 
 from PyQt5.QtWidgets import QWidget, QVBoxLayout
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
+import pyqtgraph as pg
+import pandas as pd
+import logging
+
+from src.gui.gui_utils import get_first_available_series
+
+logger = logging.getLogger(__name__)
 
 class PlotWidget(QWidget):
-    """Un widget para incrustar una gráfica de Matplotlib en PyQt."""
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.figure = Figure(figsize=(5, 3))
-        self.canvas = FigureCanvas(self.figure)
-        self.ax = self.figure.add_subplot(111)
+        self.plot_item = pg.PlotWidget()
+        self.plot_item.setBackground('w')
+        self.plot_item.showGrid(x=True, y=True)
+        self.plot_item.setLabel('left', 'Ángulo', units='°')
+        self.plot_item.setLabel('bottom', 'Frame')
         
         layout = QVBoxLayout()
-        layout.addWidget(self.canvas)
+        layout.addWidget(self.plot_item)
         self.setLayout(layout)
 
-    def plot_angle_series(self, df_metrics, angle_column, config):
-        """Dibuja la serie de ángulos con sus umbrales."""
-        self.ax.clear()
-        
-        # Extraer datos
-        raw_series = df_metrics[angle_column]
-        smooth_series = raw_series.rolling(window=5, center=True, min_periods=1).mean()
-        frames = df_metrics['frame_idx']
-        
-        # Dibujar series
-        self.ax.plot(frames, raw_series, label='Ángulo (Raw)', alpha=0.4)
-        self.ax.plot(frames, smooth_series, label='Ángulo (Suavizado)', color='red', linewidth=2)
-        
-        # Dibujar umbrales
-        self.ax.axhline(y=config.SQUAT_HIGH_THRESH, color='g', linestyle='--', label=f'Umbral Alto ({config.SQUAT_HIGH_THRESH}°)')
-        self.ax.axhline(y=config.SQUAT_LOW_THRESH, color='orange', linestyle='--', label=f'Umbral Bajo ({config.SQUAT_LOW_THRESH}°)')
-        
-        # Estilo
-        self.ax.set_title('Análisis de Ángulo de Rodilla')
-        self.ax.set_xlabel('Fotograma')
-        self.ax.set_ylabel('Ángulo (grados)')
-        self.ax.legend()
-        self.ax.grid(True)
-        self.figure.tight_layout()
-        self.canvas.draw()
+    def plot_data(self, df_metrics: pd.DataFrame):
+        """
+        Dibuja las métricas disponibles en el DataFrame.
+        """
+        self.clear_plots()
+
+        # Intentamos obtener los datos para el eje X y el eje Y
+        x_series = get_first_available_series(df_metrics, 'frame_index')
+        y_series = get_first_available_series(df_metrics, 'knee_angle')
+
+        if x_series is not None and y_series is not None:
+            # Filtramos nulos para que el gráfico no tenga cortes
+            valid_data = pd.concat([x_series, y_series], axis=1).dropna()
+            
+            pen = pg.mkPen(color=(0, 120, 215), width=2)
+            self.plot_item.plot(valid_data[x_series.name], valid_data[y_series.name], pen=pen)
+            self.plot_item.setTitle("Ángulo de la Rodilla", color="k", size="12pt")
+            logger.info(f"Gráfico actualizado con la columna '{y_series.name}'.")
+        else:
+            self.plot_item.setTitle("Datos de ángulo no disponibles", color="r", size="12pt")
+            logger.warning("No se encontraron columnas de ángulo o de frame para dibujar.")
+
+    def clear_plots(self):
+        self.plot_item.clear()

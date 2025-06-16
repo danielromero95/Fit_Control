@@ -135,24 +135,25 @@ class CroppedPoseEstimator(BaseEstimator):
 class BlazePose3DEstimator(BaseEstimator):
     """Estimador que utiliza MediaPipe Pose para extraer landmarks 3D del mundo real."""
     def __init__(self):
-        self.pose = Pose(
-            static_image_mode=False, # Ideal para vídeo
-            model_complexity=2,      # Máxima precisión
+        self.pose = mp.solutions.pose.Pose(
+            static_image_mode=False,
+            model_complexity=2,
             smooth_landmarks=True,
             enable_segmentation=False,
             min_detection_confidence=0.5
         )
 
     def estimate(self, image: np.ndarray) -> EstimationResult:
-        # NOTA: Para un rendimiento óptimo en vídeo, la rotación debería hacerse una vez fuera del estimador
         results = self.pose.process(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
 
         if not results.pose_landmarks:
             return EstimationResult(annotated_image=image)
             
-        # Extraemos ambos tipos de landmarks
-        landmarks_2d = [{'x': lm.x, 'y': lm.y, 'z': lm.z, 'visibility': lm.visibility} for lm in results.pose_landmarks.landmark]
-        world_landmarks_3d = [{'x': lm.x, 'y': lm.y, 'z': lm.z, 'visibility': lm.visibility} for lm in results.pose_world_landmarks.landmark]
+        # --- CAMBIO CLAVE AQUÍ ---
+        # Antes convertíamos los landmarks a diccionarios. Ahora los pasamos como
+        # los objetos originales de MediaPipe, que es lo que el resto del código espera.
+        landmarks_2d = results.pose_landmarks.landmark
+        world_landmarks_3d = results.pose_world_landmarks.landmark
         
         annotated_image = image.copy()
         draw_landmarks(annotated_image, results.pose_landmarks, mp.solutions.pose.POSE_CONNECTIONS)

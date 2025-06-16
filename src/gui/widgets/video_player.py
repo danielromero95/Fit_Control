@@ -70,3 +70,17 @@ class VideoPlayerWidget(QWidget):
         self.position_slider.setValue(position)
     def update_slider_range(self, duration):
         self.position_slider.setRange(0, duration)
+
+        # --- MÉTODOS AÑADIDOS PARA COMPATIBILIDAD ---
+    def play_video(self):
+        """Inicia la reproducción del vídeo cargado."""
+        if self.media_player.mediaStatus() == QMediaPlayer.LoadedMedia:
+            self.media_player.play()
+
+    def clear_media(self):
+        """Detiene la reproducción y limpia el reproductor."""
+        self.media_player.stop()
+        self.media_player.setMedia(QMediaContent())
+        self.play_button.setEnabled(False)
+
+        

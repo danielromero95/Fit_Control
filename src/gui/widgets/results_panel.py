@@ -1,87 +1,98 @@
-# src/gui/widgets/results_panel.py (Rediseñado)
+# src/gui/widgets/results_panel.py
 
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFormLayout, QLabel, QGroupBox
+import logging
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QListWidget, QFrame
 from PyQt5.QtCore import Qt
-from src import config
+from PyQt5.QtGui import QFont
+
+# --- CAMBIO CLAVE 1: Corregimos el nombre de la clase importada ---
+from .video_player import VideoPlayerWidget
 from .plot_widget import PlotWidget
-from .video_player import VideoPlayerWidget # <-- NUEVO
+from src.gui.gui_utils import get_first_available_series
+
+logger = logging.getLogger(__name__)
 
 class ResultsPanel(QWidget):
-    """El panel que muestra todos los resultados del análisis en dos columnas."""
     def __init__(self, parent=None):
         super().__init__(parent)
-        
-        # Layout principal de dos columnas
+        self.init_ui()
+
+    def init_ui(self):
         main_layout = QHBoxLayout(self)
-        
-        # --- COLUMNA IZQUIERDA: Reproductor de Vídeo ---
-        self.video_player = VideoPlayerWidget()
-        main_layout.addWidget(self.video_player, 1) # El 1 le da más espacio (stretch factor)
 
-        # --- COLUMNA DERECHA: Gráfica y Métricas ---
-        right_column_layout = QVBoxLayout()
+        # --- CAMBIO CLAVE 2: Usamos el nombre correcto de la clase ---
+        self.video_player = VideoPlayerWidget(self)
+        main_layout.addWidget(self.video_player, 2)
+
+        right_column_widget = QWidget()
+        right_column_layout = QVBoxLayout(right_column_widget)
         
-        # Gráfica
-        self.plot_widget = PlotWidget()
+        top_layout = QHBoxLayout()
+        self.rep_counter = QLabel("0")
+        font = self.rep_counter.font(); font.setPointSize(48); font.setBold(True)
+        self.rep_counter.setFont(font)
+        self.rep_counter.setAlignment(Qt.AlignCenter)
+        rep_box = self._create_box("Repeticiones", self.rep_counter)
+        top_layout.addWidget(rep_box)
+        
+        self.status_label = QLabel("Listo")
+        font = self.status_label.font(); font.setPointSize(12)
+        self.status_label.setFont(font)
+        self.status_label.setAlignment(Qt.AlignCenter)
+        status_box = self._create_box("Estado", self.status_label)
+        top_layout.addWidget(status_box)
+        right_column_layout.addLayout(top_layout)
+
+        self.plot_widget = PlotWidget(self)
         right_column_layout.addWidget(self.plot_widget)
-
-        # Métricas
-        metrics_groupbox = QGroupBox("Resumen Biomecánico")
-        self.metrics_layout = QFormLayout()
-        metrics_groupbox.setLayout(self.metrics_layout)
-        right_column_layout.addWidget(metrics_groupbox)
         
-        main_layout.addLayout(right_column_layout, 1)
+        faults_label = QLabel("Fallos Detectados:")
+        font = faults_label.font(); font.setBold(True)
+        faults_label.setFont(font)
+        right_column_layout.addWidget(faults_label)
+        self.fault_list = QListWidget(self)
+        right_column_layout.addWidget(self.fault_list)
 
-        # Labels para las métricas
-        self.reps_label = QLabel("N/A")
-        self.depth_label = QLabel("N/A")
-        self.rom_label = QLabel("N/A")
-        self.symmetry_label = QLabel("N/A")
-        self.feedback_label = QLabel("Completa un análisis para ver los consejos.")
-        self.feedback_label.setWordWrap(True)
-        self.feedback_label.setAlignment(Qt.AlignTop)
+        main_layout.addWidget(right_column_widget, 1)
 
-        self.metrics_layout.addRow("Repeticiones Contadas:", self.reps_label)
-        self.metrics_layout.addRow("Profundidad Media (Valle):", self.depth_label)
-        self.metrics_layout.addRow("Rango de Movimiento (ROM):", self.rom_label)
-        self.metrics_layout.addRow("Simetría de Rodillas:", self.symmetry_label)
-        self.metrics_layout.addRow("Consejo del Experto:", self.feedback_label)
+    def _create_box(self, title, widget):
+        box = QFrame(); box.setFrameShape(QFrame.StyledPanel)
+        layout = QVBoxLayout(box)
+        title_label = QLabel(title)
+        font = title_label.font(); font.setBold(True)
+        title_label.setFont(font); title_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(title_label)
+        layout.addWidget(widget)
+        return box
 
     def update_results(self, results):
-        """Recibe el diccionario de resultados y actualiza toda la UI."""
-        df = results.get('dataframe_metricas')
-        rep_count = results.get('repeticiones_contadas')
-        video_path = results.get('debug_video_path')
-
-        # Cargar el vídeo si se ha generado
+        self.rep_counter.setText(str(results.get("repeticiones_contadas", "0")))
+        
+        video_path = results.get("debug_video_path")
         if video_path:
             self.video_player.load_video(video_path)
-
-        if df is None or df.empty: return
-
-        # Actualizar gráfica y métricas
-        self.plot_widget.plot_angle_series(df, 'rodilla_izq', config)
         
-        angle_series = df['rodilla_izq'].dropna()
-        symmetry_series = df['sim_rodilla'].dropna()
+        df = results.get("dataframe_metricas")
+        if df is None or df.empty:
+            self.status_label.setText("Estado: No se generaron métricas.")
+            self.plot_widget.clear_plots()
+            self.fault_list.clear(); self.fault_list.addItem("Análisis no completado.")
+            return
 
-        profundidad = angle_series.min() if not angle_series.empty else 0
-        rom = (angle_series.max() - profundidad) if not angle_series.empty else 0
-        simetria = symmetry_series.mean() * 100 if not symmetry_series.empty else 100
+        self.status_label.setText("Estado: Análisis completado.")
+        self.plot_widget.plot_data(df)
 
-        self.reps_label.setText(f"<b>{rep_count}</b>")
-        self.depth_label.setText(f"<b>{profundidad:.1f}°</b>")
-        self.rom_label.setText(f"<b>{rom:.1f}°</b>")
-        self.symmetry_label.setText(f"<b>{simetria:.1f}%</b>")
-        
-        feedback = self.generate_feedback(profundidad, simetria)
-        self.feedback_label.setText(f"<i>{feedback}</i>")
+        self.fault_list.clear()
+        faults = results.get("fallos_detectados", [])
+        if not faults:
+            self.fault_list.addItem("¡No se detectaron fallos!")
+        else:
+            for fault in faults:
+                self.fault_list.addItem(f"Rep {fault['rep']}: {fault['type']} ({fault['value']})")
 
-    def generate_feedback(self, depth, symmetry):
-        # ... (lógica de feedback sin cambios) ...
-        tips = []
-        if depth > 110: tips.append("Intenta bajar un poco más para una sentadilla más profunda.")
-        elif depth < 80: tips.append("¡Excelente profundidad!")
-        if symmetry < 95: tips.append("Se detecta una asimetría entre tus rodillas.")
-        return " ".join(tips) if tips else "¡Buen trabajo! La forma parece consistente."
+    def clear_results(self):
+        self.rep_counter.setText("0")
+        self.status_label.setText("Listo para analizar")
+        self.plot_widget.clear_plots()
+        self.fault_list.clear()
+        self.video_player.clear_media()

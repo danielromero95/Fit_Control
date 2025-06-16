@@ -2,6 +2,10 @@ import cv2
 import mediapipe as mp
 import numpy as np
 
+# --- Constantes de Visualización ---
+# Ahora fijamos una altura máxima para la ventana, mucho mejor para vídeos verticales
+DISPLAY_HEIGHT = 800
+
 # --- Funciones de Cálculo ---
 def calculate_angle_3d(p1, p2, p3):
     """Calcula el ángulo entre 3 puntos en el espacio 3D."""
@@ -22,7 +26,7 @@ def calculate_angle_3d(p1, p2, p3):
 mp_pose = mp.solutions.pose
 pose = mp_pose.Pose(
     static_image_mode=False,
-    model_complexity=2,  # El modelo más preciso
+    model_complexity=2,
     enable_segmentation=False,
     smooth_landmarks=True
 )
@@ -40,51 +44,49 @@ frame_count = 0
 while cap.isOpened():
     success, image = cap.read()
     if not success:
-        print("Fin del vídeo.")
         break
+    
+    image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
 
     frame_count += 1
-    # Convertir la imagen a RGB para MediaPipe
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    
-    # Procesar la imagen y obtener los resultados
     results = pose.process(image_rgb)
+    
+    display_image = image.copy()
 
-    # Dibujar los landmarks 2D en el vídeo para visualización
-    if results.pose_landmarks:
-        mp_drawing.draw_landmarks(
-            image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
-
-    # --- La Magia del 3D ---
     if results.pose_world_landmarks:
         landmarks_3d = results.pose_world_landmarks.landmark
-        
-        # Extraer puntos de interés (lado izquierdo como ejemplo)
         left_hip = landmarks_3d[mp_pose.PoseLandmark.LEFT_HIP.value]
         left_knee = landmarks_3d[mp_pose.PoseLandmark.LEFT_KNEE.value]
         left_ankle = landmarks_3d[mp_pose.PoseLandmark.LEFT_ANKLE.value]
         left_shoulder = landmarks_3d[mp_pose.PoseLandmark.LEFT_SHOULDER.value]
         
-        # Calcular ángulos clave
         knee_angle = calculate_angle_3d(left_hip, left_knee, left_ankle)
         torso_angle = calculate_angle_3d(left_shoulder, left_hip, left_knee)
         
-        # Imprimir resultados en la consola
-        print(f"--- Frame {frame_count} ---")
-        print(f"  Profundidad (Altura Cadera Y): {left_hip.y:.2f} m")
-        print(f"  Ángulo de Rodilla: {knee_angle:.1f}°")
-        print(f"  Ángulo del Torso: {torso_angle:.1f}°")
+        # Escribimos los ángulos en la imagen
+        cv2.putText(display_image, f"Rodilla: {knee_angle:.1f}", (20, 50), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 0), 3)
+        cv2.putText(display_image, f"Torso: {torso_angle:.1f}", (20, 110), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 0), 3)
 
-        # Mostrar los ángulos en la imagen
-        cv2.putText(image, f"Rodilla: {knee_angle:.1f}", (10, 30), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        cv2.putText(image, f"Torso: {torso_angle:.1f}", (10, 70), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+    if results.pose_landmarks:
+        mp_drawing.draw_landmarks(
+            display_image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
 
-    # Mostrar la imagen
-    cv2.imshow('BlazePose 3D - Banco de Pruebas', image)
+    # <<< LÓGICA DE REDIMENSIONADO CORREGIDA >>>
+    h, w, _ = display_image.shape
+    # Calculamos la proporción ancho/alto
+    aspect_ratio = w / h
+    # Calculamos el nuevo ancho basado en la altura fija
+    display_width = int(DISPLAY_HEIGHT * aspect_ratio)
+    
+    # Redimensionamos la imagen final
+    display_image_resized = cv2.resize(display_image, (display_width, DISPLAY_HEIGHT))
 
-    if cv2.waitKey(5) & 0xFF == 27:  # Presiona ESC para salir
+    cv2.imshow('BlazePose 3D - Banco de Pruebas', display_image_resized)
+
+    if cv2.waitKey(5) & 0xFF == 27:
         break
 
 cap.release()
