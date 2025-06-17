@@ -1,58 +1,77 @@
-# Fichero de configuración principal para Gym Performance Analyzer
-# Arquitectura Data-Driven: Define qué y cómo analizar sin tocar el código.
+# config.yaml
 
-# --- Parámetros Generales del Análisis ---
+# Fichero de configuración principal para Gym Performance Analyzer
+# Arquitectura Data-Driven v2.0: Define qué y cómo analizar sin tocar el código.
+
+# =================================================
+# 1. PARÁMETROS GENERALES DEL ANÁLISIS
+# =================================================
 analysis_params:
   use_3d_analysis: True
   generate_debug_video: True
   debug_mode: False
+  # Rotación por defecto a aplicar si no se especifica otra en la GUI
+  default_rotate: 0
 
-# --- Parámetros del Ejercicio: Sentadilla (Squat) ---
+# =================================================
+# 2. PARÁMETROS DEL EJERCICIO: SENTADILLA (SQUAT)
+# =================================================
 squat_params:
-  # Define las métricas a calcular y cómo se componen.
-  # El motor de análisis leerá esta lista y sabrá qué hacer.
+  # Define las "recetas" de las métricas que el motor de análisis debe calcular.
   metric_definitions:
-    - name: 'rodilla_izq'
-      type: 'angle' # El tipo de métrica es un ángulo
-      point_names: ['LEFT_HIP', 'LEFT_KNEE', 'LEFT_ANKLE'] # Landmarks necesarios
-      
-    - name: 'rodilla_der'
-      type: 'angle'
-      point_names: ['RIGHT_HIP', 'RIGHT_KNEE', 'RIGHT_ANKLE']
-      
-    - name: 'cadera_izq'
-      type: 'angle'
-      point_names: ['LEFT_SHOULDER', 'LEFT_HIP', 'LEFT_KNEE']
-      
-    - name: 'cadera_der'
-      type: 'angle'
-      point_names: ['RIGHT_SHOULDER', 'RIGHT_HIP', 'RIGHT_KNEE']
-      
-    - name: 'altura_cadera'
-      type: 'height' # Esta es una métrica de altura, no de ángulo
-      point_name: 'LEFT_HIP' # Landmark del que extraer la coordenada 'y'
+    - { name: 'rodilla_izq', type: 'angle', point_names: ['LEFT_HIP', 'LEFT_KNEE', 'LEFT_ANKLE'] }
+    - { name: 'rodilla_der', type: 'angle', point_names: ['RIGHT_HIP', 'RIGHT_KNEE', 'RIGHT_ANKLE'] }
+    - { name: 'cadera_izq', type: 'angle', point_names: ['LEFT_SHOULDER', 'LEFT_HIP', 'LEFT_KNEE'] }
+    - { name: 'altura_cadera', type: 'height', point_name: 'LEFT_HIP' }
 
   # Parámetros para el algoritmo de conteo de repeticiones
-  rep_counter_metric: 'rodilla_izq' # Columna del DataFrame de métricas que se usará para contar
-  high_thresh: 160.0
-  low_thresh: 100.0
+  rep_counter_metric: 'rodilla_izq'
+  high_thresh: 140.0
+  low_thresh: 80.0
   depth_fail_thresh: 90.0
   peak_prominence: 10.0
   peak_distance: 15
 
-# --- Parámetros de Rendimiento y Procesamiento ---
+# =================================================
+# 3. PARÁMETROS DE RENDIMIENTO
+# =================================================
 performance_params:
   # Número de procesos a usar en paralelo. 0 usa todos los núcleos disponibles menos uno.
-  max_workers: 14
+  max_workers: 0
   
-  # Tamaño (ancho, alto) al que se redimensionan los frames ANTES de la estimación.
-  # Poner en 'null' para no redimensionar.
+  # Tamaño (ancho, alto) para pre-redimensionar frames. 'null' para no redimensionar.
   preprocess_size: [480, 854]
 
-# --- Parámetros para la visualización de landmarks ---
-drawing_params:
-  # Colores en formato BGR (Azul, Verde, Rojo), que es el que usa OpenCV
-  line_color_bgr: [0, 255, 0]   # Verde para las líneas del esqueleto
-  point_color_bgr: [0, 0, 255]  # Rojo para los puntos (landmarks)
-  line_thickness: 2
-  point_radius: 5
+# =================================================
+# 4. PARÁMETROS DE ESTILO Y VISUALIZACIÓN
+# =================================================
+drawing:
+  light_theme:
+    plot:
+      background_color: '#FFFFFF' # Formato HEX para PyQtGraph
+      axis_color: '#000000'
+      line_color_left: '#0078D7'  # Azul
+      line_color_right: '#D77800' # Naranja
+      vline_color: '#FF0000'      # Rojo
+      line_thickness: 2
+      vline_thickness: 1          # Grosor de la línea vertical
+    skeleton:
+      line_color_bgr: [0, 255, 0]    # Formato BGR (lista) para OpenCV
+      point_color_bgr: [0, 0, 255]   # Rojo
+      thickness: 2
+      radius: 5
+
+  dark_theme:
+    plot:
+      background_color: '#2E2E2E'
+      axis_color: '#CCCCCC'
+      line_color_left: '#64B5F6'
+      line_color_right: '#FFB74D'
+      vline_color: '#E57373'
+      line_thickness: 2
+      vline_thickness: 1 # Grosor de la línea vertical
+    skeleton:
+      line_color_bgr: [100, 255, 100]
+      point_color_bgr: [100, 100, 255]
+      thickness: 2
+      radius: 5

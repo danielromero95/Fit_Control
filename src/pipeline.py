@@ -15,7 +15,7 @@ from typing import List, Dict, Any, Optional, Callable
 from src.config import settings as global_settings 
 # Importación del resto de módulos de nuestra aplicación
 from src.A_preprocessing.frame_extraction import extract_and_preprocess_frames
-from src.B_pose_estimation.estimators import EstimationResult
+from src.B_pose_estimation.estimators import BaseEstimator, EstimationResult
 from src.D_modeling.exercise_analyzer import calculate_metrics, count_repetitions, detect_faults
 from src.F_visualization.drawing_utils import draw_landmarks_from_dicts
 
@@ -29,9 +29,10 @@ def _process_frame_chunk(frames_chunk: List[np.ndarray]) -> List[EstimationResul
     en el multiprocesamiento.
     """
     # Importamos y creamos el estimador DENTRO del proceso hijo
-    from src.B_pose_estimation.estimators import BaseEstimator, BlazePose3DEstimator, CroppedPoseEstimator
+    from src.B_pose_estimation.estimators import BlazePose3DEstimator, CroppedPoseEstimator
     from src.config import settings
     
+    # Creamos el estimador basándonos en la configuración global
     estimator: BaseEstimator = BlazePose3DEstimator() if settings.analysis_params.use_3d_analysis else CroppedPoseEstimator()
     
     results = []
@@ -41,6 +42,7 @@ def _process_frame_chunk(frames_chunk: List[np.ndarray]) -> List[EstimationResul
             results.append(result)
         except Exception as e:
             logger.error(f"Error procesando un frame en un worker: {e}")
+            # Devolvemos un resultado vacío con la imagen original para no romper la secuencia
             results.append(EstimationResult(annotated_image=frame))
             
     estimator.close()
@@ -53,8 +55,8 @@ def run_full_pipeline_in_memory(
     progress_callback: Optional[Callable[[int, str], None]] = None
 ) -> Dict[str, Any]:
     """
-    Ejecuta el pipeline completo de análisis en memoria, desde la extracción
-    de fotogramas hasta el análisis final, con procesamiento en paralelo.
+    Ejecuta el pipeline completo de análisis en memoria, con procesamiento en paralelo,
+    configuración data-driven y manejo de errores.
 
     Args:
         video_path: Ruta al fichero de vídeo a analizar.
@@ -62,11 +64,7 @@ def run_full_pipeline_in_memory(
         progress_callback: Función opcional para reportar el progreso a la GUI.
 
     Returns:
-        Un diccionario con los resultados del análisis, conteniendo:
-        - "repeticiones_contadas": int
-        - "dataframe_metricas": pd.DataFrame
-        - "debug_video_path": str | None
-        - "fallos_detectados": list[dict]
+        Un diccionario con los resultados del análisis.
     """
     def notify(progress: int, message: str):
         logger.info(message)
@@ -122,15 +120,16 @@ def run_full_pipeline_in_memory(
         # --- FASE 3: Análisis Unificado y Data-Driven ---
         t0 = perf_counter()
         notify(80, "FASE 3: Analizando métricas y repeticiones...")
-
-        # --- Pasamos la definición de métricas explícitamente ---
+        
         df_metrics = calculate_metrics(
             estimation_results, 
             fps,
             metric_definitions=global_settings.squat_params.metric_definitions
         )
         
-        n_reps = count_repetitions(df_metrics)
+        # --- CAMBIO: Pasamos el objeto de parámetros completo ---
+        n_reps = count_repetitions(df_metrics, params=global_settings.squat_params)
+        
         faults_detected = detect_faults(df_metrics, {"reps": n_reps})
         timings['fase_3_analysis'] = perf_counter() - t0
         
@@ -139,11 +138,22 @@ def run_full_pipeline_in_memory(
         if settings.get('generate_debug_video', global_settings.analysis_params.generate_debug_video):
             t0 = perf_counter()
             notify(98, "FASE EXTRA: Renderizando vídeo de depuración HQ...")
+            
+            is_dark_theme = settings.get('dark_mode', True)
+            theme_params = global_settings.drawing.dark_theme if is_dark_theme else global_settings.drawing.light_theme
+            
             annotated_frames_hq = []
             for original_frame, result in zip(original_frames, estimation_results):
                 frame_to_draw = original_frame.copy()
                 if result.landmarks:
-                    draw_landmarks_from_dicts(frame_to_draw, result.landmarks)
+                    draw_landmarks_from_dicts(
+                        image=frame_to_draw, 
+                        landmarks=result.landmarks,
+                        line_color=tuple(theme_params.skeleton.line_color_bgr),
+                        point_color=tuple(theme_params.skeleton.point_color_bgr),
+                        line_thickness=theme_params.skeleton.thickness,
+                        point_radius=theme_params.skeleton.radius
+                    )
                 annotated_frames_hq.append(frame_to_draw)
             
             if annotated_frames_hq:
@@ -165,7 +175,13 @@ def run_full_pipeline_in_memory(
         logger.info("--- RESUMEN DE RENDIMIENTO ---")
         for fase, t in timings.items(): logger.info(f"[TIMER] {fase:<25}: {t:>6.2f}s")
         
-        return {"repeticiones_contadas": n_reps, "dataframe_metricas": df_metrics, "debug_video_path": debug_video_path, "fallos_detectados": faults_detected}
+        return {
+            "repeticiones_contadas": n_reps,
+            "dataframe_metricas": df_metrics,
+            "debug_video_path": debug_video_path,
+            "fallos_detectados": faults_detected,
+            "fps": fps # Añadimos fps a los resultados para que la GUI lo use
+        }
 
     except Exception as e:
         logger.error(f"Error fatal en el pipeline: {e}", exc_info=True)

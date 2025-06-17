@@ -4,7 +4,8 @@ import yaml
 from pydantic import BaseModel, Field, validator
 import logging
 import os
-from typing import Optional, List, Tuple, Dict
+from typing import Optional, List, Tuple
+from src.constants import MetricType 
 
 logger = logging.getLogger(__name__)
 
@@ -14,34 +15,29 @@ try:
 except ImportError:
     PoseLandmark = None
 
-# --- Modelos de Pydantic ---
+# --- 1. Definición de la Estructura de la Configuración con Pydantic ---
+
+# -- Modelos Anidados para una Estructura Limpia --
 
 class AnalysisParams(BaseModel):
-    use_3d_analysis: bool = Field(True)
-    generate_debug_video: bool = Field(True)
-    debug_mode: bool = Field(False)
-
-class PerformanceParams(BaseModel):
-    max_workers: int = Field(0)
-    preprocess_size: Optional[List[int]] = Field([480, 854])
-    
-class DrawingParams(BaseModel):
-    line_color_bgr: Tuple[int, int, int] = Field((0, 255, 0))
-    point_color_bgr: Tuple[int, int, int] = Field((0, 0, 255))
-    line_thickness: int = Field(2)
-    point_radius: int = Field(5)
+    use_3d_analysis: bool
+    generate_debug_video: bool
+    debug_mode: bool
+    default_rotate: int
 
 class MetricDefinition(BaseModel):
-    name: str; type: str = 'angle'
+    name: str
+    # --- CAMBIO: Usamos el Enum para el tipo, con 'angle' por defecto ---
+    type: MetricType = MetricType.ANGLE 
     point_names: Optional[List[str]] = None
     point_name: Optional[str] = None
+
+    # El validador ahora comprueba contra el Enum
     @validator('point_names', always=True)
     def validate_angle_points(cls, v, values):
-        if values.get('type') == 'angle':
-            if not v or len(v) != 3: raise ValueError("Métricas 'angle' deben tener 3 'point_names'.")
-            if PoseLandmark:
-                for point in v:
-                    if point not in PoseLandmark.__members__: raise ValueError(f"'{point}' no es un PoseLandmark válido.")
+        if values.get('type') == MetricType.ANGLE: # <-- Usamos el Enum
+            if not v or len(v) != 3:
+                raise ValueError("Métricas de tipo 'angle' deben tener 3 'point_names'.")
         return v
 
 class SquatParams(BaseModel):
@@ -53,7 +49,6 @@ class SquatParams(BaseModel):
     peak_prominence: float
     peak_distance: int
 
-    # --- VALIDADOR AVANZADO AÑADIDO ---
     @validator('metric_definitions')
     def check_unique_metric_names(cls, v):
         names = [metric.name for metric in v]
@@ -66,25 +61,60 @@ class SquatParams(BaseModel):
         if 'metric_definitions' in values:
             defined_names = {metric.name for metric in values['metric_definitions']}
             if v not in defined_names:
-                raise ValueError(f"'{v}' no es un nombre de métrica válido definido en 'metric_definitions'.")
+                raise ValueError(f"'{v}' no está definido en 'metric_definitions'.")
         return v
 
+class PerformanceParams(BaseModel):
+    max_workers: int
+    preprocess_size: Optional[List[int]]
+
+class PlotThemeParams(BaseModel):
+    background_color: str
+    axis_color: str
+    line_color_left: str
+    line_color_right: str
+    vline_color: str
+    line_thickness: int
+    vline_thickness: int
+
+class SkeletonThemeParams(BaseModel):
+    line_color_bgr: Tuple[int, int, int]
+    point_color_bgr: Tuple[int, int, int]
+    thickness: int
+    radius: int
+
+class ThemeParams(BaseModel):
+    plot: PlotThemeParams
+    skeleton: SkeletonThemeParams
+
+class DrawingConfig(BaseModel):
+    light_theme: ThemeParams
+    dark_theme: ThemeParams
+
+# -- Modelo Principal de Configuración --
 class AppConfig(BaseModel):
     analysis_params: AnalysisParams
     squat_params: SquatParams
     performance_params: PerformanceParams
-    drawing_params: DrawingParams
+    drawing: DrawingConfig # Renombrado para coincidir con el YAML
 
-# --- Función de Carga  ---
+
+# --- 2. Función para Cargar la Configuración ---
 def load_config(config_path: str = "config.yaml") -> AppConfig:
-    if not os.path.exists(config_path): raise FileNotFoundError(f"'{config_path}' no encontrado.")
+    if not os.path.exists(config_path):
+        raise FileNotFoundError(f"El fichero de configuración '{config_path}' no se encontró. Asegúrate de que está en la raíz del proyecto.")
+
     try:
-        with open(config_path, 'r', encoding='utf-8') as f: config_data = yaml.safe_load(f)
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config_data = yaml.safe_load(f)
+        
         config_model = AppConfig(**config_data)
-        logger.info(f"Configuración cargada y validada desde '{config_path}'.")
+        logger.info(f"Configuración cargada y validada correctamente desde '{config_path}'.")
         return config_model
     except Exception as e:
         logger.error(f"Error al cargar o validar la configuración desde '{config_path}': {e}", exc_info=True)
         raise
 
+
+# --- 3. Objeto de Configuración Global ---
 settings = load_config()

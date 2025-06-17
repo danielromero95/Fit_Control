@@ -4,6 +4,9 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QSli
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtMultimediaWidgets import QVideoWidget
 from PyQt5.QtCore import QUrl, Qt
+import logging
+
+logger = logging.getLogger(__name__)
 
 class VideoPlayerWidget(QWidget):
     def __init__(self, parent=None):
@@ -19,22 +22,16 @@ class VideoPlayerWidget(QWidget):
 
         self.position_slider = QSlider(Qt.Horizontal)
         self.position_slider.sliderMoved.connect(self.set_position)
-
-        # --- CAMBIO CLAVE: Conectamos la señal de error ---
-        self.media_player.error.connect(self.handle_error)
         
+        # Conectamos las señales del reproductor a nuestros manejadores
+        self.media_player.error.connect(self.handle_error)
         self.media_player.stateChanged.connect(self.update_play_button_icon)
         self.media_player.positionChanged.connect(self.update_slider_position)
         self.media_player.durationChanged.connect(self.update_slider_range)
 
-        controls_layout = QHBoxLayout()
-        controls_layout.setContentsMargins(0, 0, 0, 0)
-        controls_layout.addWidget(self.play_button)
-        controls_layout.addWidget(self.position_slider)
-
-        main_layout = QVBoxLayout(self)
-        main_layout.addWidget(video_widget)
-        main_layout.addLayout(controls_layout)
+        controls_layout = QHBoxLayout(); controls_layout.setContentsMargins(0, 0, 0, 0)
+        controls_layout.addWidget(self.play_button); controls_layout.addWidget(self.position_slider)
+        main_layout = QVBoxLayout(self); main_layout.addWidget(video_widget); main_layout.addLayout(controls_layout)
         
         self.media_player.setVideoOutput(video_widget)
 
@@ -42,15 +39,19 @@ class VideoPlayerWidget(QWidget):
         if video_path and os.path.exists(video_path):
             self.media_player.setMedia(QMediaContent(QUrl.fromLocalFile(video_path)))
             self.play_button.setEnabled(True)
+            
+            # --- Forzamos la carga del vídeo ---
+            # Este truco obliga al backend de Qt a cargar el buffer del vídeo
+            logger.info("Forzando la carga del vídeo con play() y pause()...")
             self.media_player.play()
+            self.media_player.pause()
         else:
             self.play_button.setEnabled(False)
             self.media_player.setMedia(QMediaContent())
 
-    # --- Método para imprimir errores ---
     def handle_error(self):
         if self.media_player.error() != QMediaPlayer.NoError:
-            print(f"ERROR DEL REPRODUCTOR: {self.media_player.errorString()}")
+            logger.error(f"ERROR DEL REPRODUCTOR: {self.media_player.errorString()}")
 
     def toggle_play(self):
         if self.media_player.state() == QMediaPlayer.PlayingState:
@@ -66,21 +67,18 @@ class VideoPlayerWidget(QWidget):
 
     def set_position(self, position):
         self.media_player.setPosition(position)
+    
     def update_slider_position(self, position):
         self.position_slider.setValue(position)
+
     def update_slider_range(self, duration):
         self.position_slider.setRange(0, duration)
-
-        # --- MÉTODOS AÑADIDOS PARA COMPATIBILIDAD ---
+        
     def play_video(self):
-        """Inicia la reproducción del vídeo cargado."""
         if self.media_player.mediaStatus() == QMediaPlayer.LoadedMedia:
             self.media_player.play()
 
     def clear_media(self):
-        """Detiene la reproducción y limpia el reproductor."""
         self.media_player.stop()
         self.media_player.setMedia(QMediaContent())
         self.play_button.setEnabled(False)
-
-        
