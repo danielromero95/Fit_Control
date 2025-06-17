@@ -1,5 +1,5 @@
 # Fichero de configuración principal para Gym Performance Analyzer
-# Aquí puedes ajustar todos los parámetros sin tocar el código.
+# Arquitectura Data-Driven: Define qué y cómo analizar sin tocar el código.
 
 # --- Parámetros Generales del Análisis ---
 analysis_params:
@@ -9,20 +9,49 @@ analysis_params:
 
 # --- Parámetros del Ejercicio: Sentadilla (Squat) ---
 squat_params:
-  high_thresh: 140.0
-  low_thresh: 80.0
+  # Define las métricas a calcular y cómo se componen.
+  # El motor de análisis leerá esta lista y sabrá qué hacer.
+  metric_definitions:
+    - name: 'rodilla_izq'
+      type: 'angle' # El tipo de métrica es un ángulo
+      point_names: ['LEFT_HIP', 'LEFT_KNEE', 'LEFT_ANKLE'] # Landmarks necesarios
+      
+    - name: 'rodilla_der'
+      type: 'angle'
+      point_names: ['RIGHT_HIP', 'RIGHT_KNEE', 'RIGHT_ANKLE']
+      
+    - name: 'cadera_izq'
+      type: 'angle'
+      point_names: ['LEFT_SHOULDER', 'LEFT_HIP', 'LEFT_KNEE']
+      
+    - name: 'cadera_der'
+      type: 'angle'
+      point_names: ['RIGHT_SHOULDER', 'RIGHT_HIP', 'RIGHT_KNEE']
+      
+    - name: 'altura_cadera'
+      type: 'height' # Esta es una métrica de altura, no de ángulo
+      point_name: 'LEFT_HIP' # Landmark del que extraer la coordenada 'y'
+
+  # Parámetros para el algoritmo de conteo de repeticiones
+  rep_counter_metric: 'rodilla_izq' # Columna del DataFrame de métricas que se usará para contar
+  high_thresh: 160.0
+  low_thresh: 100.0
   depth_fail_thresh: 90.0
   peak_prominence: 10.0
   peak_distance: 15
 
 # --- Parámetros de Rendimiento y Procesamiento ---
 performance_params:
+  # Número de procesos a usar en paralelo. 0 usa todos los núcleos disponibles menos uno.
   max_workers: 14
+  
+  # Tamaño (ancho, alto) al que se redimensionan los frames ANTES de la estimación.
+  # Poner en 'null' para no redimensionar.
   preprocess_size: [480, 854]
 
 # --- Parámetros para la visualización de landmarks ---
 drawing_params:
-  # Colores en formato BGR (Azul, Verde, Rojo)
+  # Colores en formato BGR (Azul, Verde, Rojo), que es el que usa OpenCV
   line_color_bgr: [0, 255, 0]   # Verde para las líneas del esqueleto
   point_color_bgr: [0, 0, 255]  # Rojo para los puntos (landmarks)
   line_thickness: 2

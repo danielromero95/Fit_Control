@@ -9,11 +9,11 @@ import math
 from itertools import chain
 from concurrent.futures import ProcessPoolExecutor
 import numpy as np
-from typing import List
+from typing import List, Dict, Any, Optional, Callable
 
-# Importación de la configuración global
+# Importación de la configuración global desde nuestro sistema Pydantic/YAML
 from src.config import settings as global_settings 
-# Módulos de la aplicación
+# Importación del resto de módulos de nuestra aplicación
 from src.A_preprocessing.frame_extraction import extract_and_preprocess_frames
 from src.B_pose_estimation.estimators import EstimationResult
 from src.D_modeling.exercise_analyzer import calculate_metrics, count_repetitions, detect_faults
@@ -25,13 +25,13 @@ logger = logging.getLogger(__name__)
 def _process_frame_chunk(frames_chunk: List[np.ndarray]) -> List[EstimationResult]:
     """
     Función worker que se ejecuta en un proceso separado.
-    Procesa un "trozo" de fotogramas.
+    Procesa un "trozo" (chunk) de fotogramas. Es auto-contenida para ser segura
+    en el multiprocesamiento.
     """
-    # Importamos y creamos el estimador DENTRO del proceso hijo para seguridad
+    # Importamos y creamos el estimador DENTRO del proceso hijo
     from src.B_pose_estimation.estimators import BaseEstimator, BlazePose3DEstimator, CroppedPoseEstimator
     from src.config import settings
     
-    # Creamos el estimador basándonos en la configuración global
     estimator: BaseEstimator = BlazePose3DEstimator() if settings.analysis_params.use_3d_analysis else CroppedPoseEstimator()
     
     results = []
@@ -41,16 +41,32 @@ def _process_frame_chunk(frames_chunk: List[np.ndarray]) -> List[EstimationResul
             results.append(result)
         except Exception as e:
             logger.error(f"Error procesando un frame en un worker: {e}")
-            # Devolvemos un resultado vacío con la imagen original para no romper la secuencia
             results.append(EstimationResult(annotated_image=frame))
             
     estimator.close()
     return results
 
 
-def run_full_pipeline_in_memory(video_path: str, settings: dict, progress_callback=None):
+def run_full_pipeline_in_memory(
+    video_path: str, 
+    settings: Dict[str, Any], 
+    progress_callback: Optional[Callable[[int, str], None]] = None
+) -> Dict[str, Any]:
     """
-    Ejecuta el pipeline completo de análisis en memoria, con procesamiento en paralelo.
+    Ejecuta el pipeline completo de análisis en memoria, desde la extracción
+    de fotogramas hasta el análisis final, con procesamiento en paralelo.
+
+    Args:
+        video_path: Ruta al fichero de vídeo a analizar.
+        settings: Diccionario con los ajustes de la sesión actual de la GUI (output_dir, rotate, etc.).
+        progress_callback: Función opcional para reportar el progreso a la GUI.
+
+    Returns:
+        Un diccionario con los resultados del análisis, conteniendo:
+        - "repeticiones_contadas": int
+        - "dataframe_metricas": pd.DataFrame
+        - "debug_video_path": str | None
+        - "fallos_detectados": list[dict]
     """
     def notify(progress: int, message: str):
         logger.info(message)
@@ -103,10 +119,17 @@ def run_full_pipeline_in_memory(video_path: str, settings: dict, progress_callba
         notify(75, "FASE 2: Estimación de pose completada.")
         timings['fase_2_pose_estimation'] = perf_counter() - t0
         
-        # --- FASE 3: Análisis Unificado ---
+        # --- FASE 3: Análisis Unificado y Data-Driven ---
         t0 = perf_counter()
         notify(80, "FASE 3: Analizando métricas y repeticiones...")
-        df_metrics = calculate_metrics(estimation_results, fps)
+
+        # --- Pasamos la definición de métricas explícitamente ---
+        df_metrics = calculate_metrics(
+            estimation_results, 
+            fps,
+            metric_definitions=global_settings.squat_params.metric_definitions
+        )
+        
         n_reps = count_repetitions(df_metrics)
         faults_detected = detect_faults(df_metrics, {"reps": n_reps})
         timings['fase_3_analysis'] = perf_counter() - t0
@@ -120,7 +143,6 @@ def run_full_pipeline_in_memory(video_path: str, settings: dict, progress_callba
             for original_frame, result in zip(original_frames, estimation_results):
                 frame_to_draw = original_frame.copy()
                 if result.landmarks:
-                    # Usamos nuestra propia función de dibujado configurable
                     draw_landmarks_from_dicts(frame_to_draw, result.landmarks)
                 annotated_frames_hq.append(frame_to_draw)
             
