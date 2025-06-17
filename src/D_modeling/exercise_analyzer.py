@@ -84,7 +84,8 @@ def calculate_metrics(
 
 def count_repetitions(df_metrics: pd.DataFrame, params: SquatParams) -> int:
     """
-    Wrapper unificado que cuenta repeticiones usando el robusto algoritmo de detección de picos.
+    Wrapper unificado que cuenta repeticiones usando el robusto algoritmo de detección de valles.
+    Recibe todos los parámetros a través del objeto de configuración.
     """
     angle_column = params.rep_counter_metric
     
@@ -103,7 +104,7 @@ def count_repetitions(df_metrics: pd.DataFrame, params: SquatParams) -> int:
         prominence=params.peak_prominence, distance=params.peak_distance
     )
     
-    logger.info(f"Detección de picos encontró {len(valleys)} repeticiones válidas usando '{angle_column}'.")
+    logger.info(f"Detección de picos encontró {len(valleys)} repeticiones válidas.")
     return len(valleys)
 
 
