@@ -21,6 +21,7 @@ DEFAULT_USE_CROP = True
 DEFAULT_GENERATE_VIDEO = True
 DEFAULT_DEBUG_MODE = False
 DEFAULT_DARK_MODE = True
+DEFAULT_ROTATE = 90
 
 class MetricType(str, Enum):
     """Define los tipos de métricas que nuestro analizador puede calcular."""

@@ -11,7 +11,7 @@ analysis_params:
   generate_debug_video: True
   debug_mode: False
   # Rotación por defecto a aplicar si no se especifica otra en la GUI
-  default_rotate: 0
+  default_rotate: 90
 
 # =================================================
 # 2. PARÁMETROS DEL EJERCICIO: SENTADILLA (SQUAT)

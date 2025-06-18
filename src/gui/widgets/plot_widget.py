@@ -77,7 +77,7 @@ class PlotWidget(QWidget):
     def set_theme(self, is_dark: bool) -> None:
         """Actualiza los colores del gráfico según el tema (claro/oscuro)."""
         self._is_dark_theme = is_dark
-        theme = settings.drawing.dark_theme if is_dark else settings.drawing.light_mode
+        theme = settings.drawing.dark_theme if is_dark else settings.drawing.light_theme
         plot_params = theme.plot
         
         self.plot_item.setBackground(plot_params.background_color)
