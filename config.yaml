@@ -55,6 +55,7 @@ drawing:
       vline_color: '#FF0000'      # Rojo
       line_thickness: 2
       vline_thickness: 1          # Grosor de la línea vertical
+      threshold_color: '#FF0000'  # Umbrales en rojo
     skeleton:
       line_color_bgr: [0, 255, 0]    # Formato BGR (lista) para OpenCV
       point_color_bgr: [0, 0, 255]   # Rojo
@@ -69,7 +70,8 @@ drawing:
       line_color_right: '#FFB74D'
       vline_color: '#E57373'
       line_thickness: 2
-      vline_thickness: 1 # Grosor de la línea vertical
+      vline_thickness: 1           # Grosor de la línea vertical
+      threshold_color: '#FF4444'   # Umbrales en un rojo más suave
     skeleton:
       line_color_bgr: [100, 255, 100]
       point_color_bgr: [100, 100, 255]

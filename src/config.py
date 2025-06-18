@@ -5,7 +5,8 @@ from pydantic import BaseModel, Field, validator
 import logging
 import os
 from typing import Optional, List, Tuple
-from src.constants import MetricType 
+
+from src.constants import MetricType
 
 logger = logging.getLogger(__name__)
 
@@ -15,32 +16,35 @@ try:
 except ImportError:
     PoseLandmark = None
 
-# --- 1. Definición de la Estructura de la Configuración con Pydantic ---
-
-# -- Modelos Anidados para una Estructura Limpia --
+# --- Modelos de Pydantic para validar config.yaml ---
 
 class AnalysisParams(BaseModel):
+    """Parámetros que controlan el tipo y el nivel de detalle del análisis."""
     use_3d_analysis: bool
     generate_debug_video: bool
     debug_mode: bool
     default_rotate: int
 
 class MetricDefinition(BaseModel):
+    """Define una única métrica, su tipo y los puntos necesarios."""
     name: str
-    # --- CAMBIO: Usamos el Enum para el tipo, con 'angle' por defecto ---
-    type: MetricType = MetricType.ANGLE 
+    type: MetricType = MetricType.ANGLE
     point_names: Optional[List[str]] = None
     point_name: Optional[str] = None
 
-    # El validador ahora comprueba contra el Enum
     @validator('point_names', always=True)
     def validate_angle_points(cls, v, values):
-        if values.get('type') == MetricType.ANGLE: # <-- Usamos el Enum
+        if values.get('type') == MetricType.ANGLE:
             if not v or len(v) != 3:
-                raise ValueError("Métricas de tipo 'angle' deben tener 3 'point_names'.")
+                raise ValueError("Métricas de tipo 'angle' deben tener una lista de 3 'point_names'.")
+            if PoseLandmark and v:
+                for point in v:
+                    if point not in PoseLandmark.__members__:
+                        raise ValueError(f"Landmark '{point}' no es un miembro válido de PoseLandmark.")
         return v
 
 class SquatParams(BaseModel):
+    """Parámetros específicos para un tipo de ejercicio (ej. sentadilla)."""
     metric_definitions: List[MetricDefinition]
     rep_counter_metric: str
     high_thresh: float
@@ -65,10 +69,12 @@ class SquatParams(BaseModel):
         return v
 
 class PerformanceParams(BaseModel):
+    """Parámetros para ajustar el rendimiento y el uso de recursos."""
     max_workers: int
     preprocess_size: Optional[List[int]]
 
 class PlotThemeParams(BaseModel):
+    """Define los colores y estilos para un tema del gráfico."""
     background_color: str
     axis_color: str
     line_color_left: str
@@ -76,45 +82,56 @@ class PlotThemeParams(BaseModel):
     vline_color: str
     line_thickness: int
     vline_thickness: int
+    threshold_color: Optional[str] = None  # Color de las líneas de umbral, por defecto axis_color si no se especifica
+
+    @validator('threshold_color', always=True)
+    def set_default_threshold_color(cls, v, values):
+        """Si no se proporciona threshold_color, usar axis_color como valor por defecto."""
+        if v is None:
+            axis = values.get('axis_color')
+            if axis is None:
+                raise ValueError("axis_color debe estar definido para asignar threshold_color por defecto")
+            return axis
+        return v
 
 class SkeletonThemeParams(BaseModel):
+    """Define los colores y estilos para el esqueleto dibujado en el vídeo."""
     line_color_bgr: Tuple[int, int, int]
     point_color_bgr: Tuple[int, int, int]
     thickness: int
     radius: int
 
 class ThemeParams(BaseModel):
+    """Agrupa los estilos de plot y skeleton para un tema."""
     plot: PlotThemeParams
     skeleton: SkeletonThemeParams
 
 class DrawingConfig(BaseModel):
+    """Contiene la configuración de estilo para ambos temas."""
     light_theme: ThemeParams
     dark_theme: ThemeParams
 
-# -- Modelo Principal de Configuración --
 class AppConfig(BaseModel):
+    """Modelo principal que contiene toda la configuración de la aplicación."""
     analysis_params: AnalysisParams
     squat_params: SquatParams
     performance_params: PerformanceParams
-    drawing: DrawingConfig # Renombrado para coincidir con el YAML
+    drawing: DrawingConfig
 
 
-# --- 2. Función para Cargar la Configuración ---
 def load_config(config_path: str = "config.yaml") -> AppConfig:
+    """Carga la configuración desde un fichero YAML y la valida con Pydantic."""
     if not os.path.exists(config_path):
-        raise FileNotFoundError(f"El fichero de configuración '{config_path}' no se encontró. Asegúrate de que está en la raíz del proyecto.")
-
+        raise FileNotFoundError(f"El fichero de configuración '{config_path}' no se encontró.")
     try:
         with open(config_path, 'r', encoding='utf-8') as f:
             config_data = yaml.safe_load(f)
-        
         config_model = AppConfig(**config_data)
-        logger.info(f"Configuración cargada y validada correctamente desde '{config_path}'.")
+        logger.info(f"Configuración cargada y validada desde '{config_path}'.")
         return config_model
     except Exception as e:
         logger.error(f"Error al cargar o validar la configuración desde '{config_path}': {e}", exc_info=True)
         raise
 
-
-# --- 3. Objeto de Configuración Global ---
+# Objeto de configuración global que se importará en otros módulos.
 settings = load_config()

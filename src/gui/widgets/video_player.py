@@ -3,22 +3,23 @@
 import os
 import logging
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QSlider, QStyle, QComboBox, QLabel
-# --- Importamos QMediaPlayer para usar su tipo de estado ---
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtMultimediaWidgets import QVideoWidget
-from PyQt5.QtCore import QUrl, Qt
+from PyQt5.QtCore import QUrl, Qt, QTimer, pyqtSignal
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 class VideoPlayerWidget(QWidget):
     """
-    Widget que encapsula un QMediaPlayer y sus controles, incluyendo velocidad
-    y una interacción de slider y estado de controles mejorada.
+    Widget que encapsula un QMediaPlayer y sus controles. Implementa una señal
+    de alta frecuencia para una sincronización fluida con otros widgets.
     """
+    # Señal que emitirá la posición de forma continua para animaciones suaves
+    smooth_position_changed = pyqtSignal(int)
     
     def __init__(self, parent: Optional[QWidget] = None) -> None:
-        """Inicializa el reproductor, los widgets y las conexiones de señales."""
+        """Inicializa el reproductor, los widgets y el timer de animación."""
         super().__init__(parent)
         self._was_playing_before_drag: bool = False
         
@@ -34,8 +35,13 @@ class VideoPlayerWidget(QWidget):
         self.speed_combo = QComboBox()
         self.speed_combo.addItems(['0.25x', '0.5x', '1.0x', '1.5x', '2.0x'])
         
+        # --- Timer para la animación fluida ---
+        self.animation_timer = QTimer(self)
+        self.animation_timer.setInterval(33)  # ~30 FPS
+        self.animation_timer.timeout.connect(self._on_animation_tick)
+        
         # --- Estado Inicial de los Controles ---
-        self.clear_media() # Llamamos a clear_media para establecer el estado inicial
+        self.clear_media()
         
         # --- Conexiones de Señales a Slots ---
         self.play_button.clicked.connect(self.toggle_play)
@@ -45,8 +51,7 @@ class VideoPlayerWidget(QWidget):
         self.speed_combo.currentTextChanged.connect(self.set_playback_rate)
         
         self.media_player.error.connect(self.handle_error)
-        self.media_player.stateChanged.connect(self.update_play_button_icon)
-        self.media_player.positionChanged.connect(self.update_slider_position)
+        self.media_player.stateChanged.connect(self._on_state_changed)
         self.media_player.durationChanged.connect(self.update_slider_range)
 
         # --- Organización de Layouts ---
@@ -63,6 +68,22 @@ class VideoPlayerWidget(QWidget):
         
         self.media_player.setVideoOutput(video_widget)
 
+    def _on_animation_tick(self) -> None:
+        """Se ejecuta a ~30FPS mientras el vídeo se reproduce para emitir la posición."""
+        pos = self.media_player.position()
+        self.smooth_position_changed.emit(pos)
+        # Actualizamos el slider desde aquí para total sincronización
+        if not self.position_slider.isSliderDown():
+            self.position_slider.setValue(pos)
+
+    def _on_state_changed(self, state: QMediaPlayer.State) -> None:
+        """Controla el timer de animación y el icono del botón según el estado del reproductor."""
+        self.update_play_button_icon(state)
+        if state == QMediaPlayer.PlayingState:
+            self.animation_timer.start()
+        else:
+            self.animation_timer.stop()
+
     def load_video(self, video_path: str) -> None:
         """Carga un nuevo vídeo en el reproductor, fuerza la inicialización y activa los controles."""
         if video_path and os.path.exists(video_path):
@@ -71,7 +92,7 @@ class VideoPlayerWidget(QWidget):
             self.speed_combo.setEnabled(True)
             self.position_slider.setValue(0)
             self.set_playback_rate(self.speed_combo.currentText())
-            # Forzamos la carga del buffer
+            # Forzamos la carga del buffer para que el vídeo esté listo para 'seek'
             self.media_player.play()
             self.media_player.pause()
         else:
@@ -119,21 +140,17 @@ class VideoPlayerWidget(QWidget):
         else:
             self.play_button.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
     
-    def update_slider_position(self, position: int) -> None:
-        """Actualiza la posición del slider cuando el vídeo avanza."""
-        if not self.position_slider.isSliderDown():
-            self.position_slider.setValue(position)
-
     def update_slider_range(self, duration: int) -> None:
         """Ajusta el rango del slider a la duración del vídeo."""
         self.position_slider.setRange(0, duration)
         
     def clear_media(self) -> None:
         """Limpia el reproductor y resetea todos los controles a su estado inicial."""
+        self.animation_timer.stop()
         self.media_player.stop()
         self.media_player.setMedia(QMediaContent())
         self.play_button.setEnabled(False)
         self.speed_combo.setEnabled(False)
-        self.speed_combo.setCurrentText('1.0x') # Reseteamos la velocidad
+        self.speed_combo.setCurrentText('1.0x')
         self.position_slider.setRange(0, 0)
         self.position_slider.setValue(0)
