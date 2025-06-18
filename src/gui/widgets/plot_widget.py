@@ -69,8 +69,13 @@ class PlotWidget(QWidget):
         self.plot_item.showGrid(x=True, y=True)
         self.plot_item.setLabel('left', 'Ángulo', units='°')
         self.plot_item.setLabel('bottom', 'Frame')
-        self.legend = self.plot_item.addLegend(offset=(-30, 30))
+        self.legend = self.plot_item.addLegend()
         
+        # --- Anclamos la leyenda abajo a la derecha ---
+        # El primer (1,1) se refiere a la esquina inferior derecha de la leyenda.
+        # El segundo (1,1) se refiere a la esquina inferior derecha del gráfico.
+        self.legend.anchor(itemPos=(1, 1), parentPos=(1, 1))
+
         for item in [self.v_line, self.h_line_low, self.h_line_high, self.marker]:
             self.plot_item.addItem(item)
         
