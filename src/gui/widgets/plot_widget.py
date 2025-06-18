@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import pyqtgraph as pg
 from PyQt5.QtCore import pyqtSignal, Qt, QPointF
-from PyQt5.QtGui import QMouseEvent, QGuiApplication
+from PyQt5.QtGui import QGuiApplication
 from PyQt5.QtWidgets import QWidget, QVBoxLayout
 from typing import Optional, Tuple, List, Dict, Any
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class PlotWidget(QWidget):
     """
     Widget de gráficos interactivo y tematizable. Implementa "clic y arrastre"
-    para explorar los resultados.
+    para explorar los resultados, con feedback visual y tooltips automáticos.
     """
     frame_clicked_signal = pyqtSignal(int)
     
@@ -26,7 +26,8 @@ class PlotWidget(QWidget):
         'right_knee_angle': 'Rodilla Derecha'
     }
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
+        """Inicializa el widget del gráfico y todos sus componentes visuales."""
         super().__init__(parent)
         self._x_data: Optional[np.ndarray] = None
         self._is_dark_theme: bool = True
@@ -35,8 +36,10 @@ class PlotWidget(QWidget):
         self.plot_item = pg.PlotWidget()
         self._vb = self.plot_item.getPlotItem().getViewBox()
         
-        # Desactivamos el comportamiento por defecto del ratón para controlarlo nosotros
+        # --- CAMBIO 1: Bloqueamos completamente el ratón para controlarlo nosotros ---
         self._vb.setMouseEnabled(x=False, y=False)
+        # --- Desactiva el zoom con la rueda del ratón ---
+        self._vb.wheelEvent = lambda ev: None
         
         # Elementos de Feedback Visual
         self.v_line = pg.InfiniteLine(angle=90, movable=False)
@@ -44,13 +47,12 @@ class PlotWidget(QWidget):
         self.h_line_high = pg.InfiniteLine(angle=0, movable=False, pen=pg.mkPen(style=Qt.DotLine))
         self.marker = pg.ScatterPlotItem(size=12, pen=pg.mkPen(None))
         
-        # Aseguramos que los elementos de feedback se dibujen por encima de las curvas
+        # Aseguramos que los elementos de feedback se dibujen en el orden correcto
         self.h_line_low.setZValue(10); self.h_line_high.setZValue(10)
         self.v_line.setZValue(20); self.marker.setZValue(30)
         
         self._setup_plot_appearance()
         
-        # Conectamos las señales de ratón al manejador unificado
         self._vb.scene().sigMouseClicked.connect(self._on_mouse_event)
         self._vb.scene().sigMouseMoved.connect(self._on_mouse_event)
         
@@ -59,23 +61,21 @@ class PlotWidget(QWidget):
         layout.addWidget(self.plot_item)
         self.setLayout(layout)
 
-    def _setup_plot_appearance(self):
+    def _setup_plot_appearance(self) -> None:
         """Configura la apariencia estática del gráfico (ejes, leyenda, etc.)."""
         self.plot_item.showGrid(x=True, y=True)
         self.plot_item.setLabel('left', 'Ángulo', units='°')
         self.plot_item.setLabel('bottom', 'Frame')
         self.legend = self.plot_item.addLegend(offset=(-30, 30))
         
-        self.plot_item.addItem(self.v_line)
-        self.plot_item.addItem(self.h_line_low)
-        self.plot_item.addItem(self.h_line_high)
-        self.plot_item.addItem(self.marker)
+        for item in [self.v_line, self.h_line_low, self.h_line_high, self.marker]:
+            self.plot_item.addItem(item)
         
         self.set_theme(is_dark=True)
         self.clear_plots()
 
-    def set_theme(self, is_dark: bool):
-        """Actualiza los colores del gráfico según el tema."""
+    def set_theme(self, is_dark: bool) -> None:
+        """Actualiza los colores del gráfico según el tema (claro/oscuro)."""
         self._is_dark_theme = is_dark
         theme = settings.drawing.dark_theme if is_dark else settings.drawing.light_mode
         plot_params = theme.plot
@@ -86,23 +86,31 @@ class PlotWidget(QWidget):
         self.plot_item.getAxis('bottom').setPen(axis_pen)
         
         self.v_line.setPen(pg.mkPen(plot_params.vline_color, width=plot_params.vline_thickness, style=Qt.DashLine))
-        self.h_line_low.setPen(pg.mkPen(plot_params.axis_color, width=1, style=Qt.DotLine))
-        self.h_line_high.setPen(pg.mkPen(plot_params.axis_color, width=1, style=Qt.DotLine))
+        thresh_pen = pg.mkPen(plot_params.axis_color, width=1, style=Qt.DotLine)
+        self.h_line_low.setPen(thresh_pen)
+        self.h_line_high.setPen(thresh_pen)
         self.marker.setBrush(pg.mkBrush(plot_params.vline_color))
 
-    def _on_mouse_event(self, event: Any):
-        """Manejador unificado y robusto para eventos de clic y arrastre."""
+    def _on_mouse_event(self, event: Any) -> None:
+        """Manejador unificado y robusto para eventos de clic y arrastre del ratón."""
         if not (QGuiApplication.mouseButtons() & Qt.LeftButton): return
-        
+
+        # Normalizamos el evento para obtener la posición, sea de clic o de movimiento
         scene_pos = event if isinstance(event, QPointF) else event.scenePos()
         
         if self._x_data is None or len(self._x_data) == 0: return
         if not self._vb.sceneBoundingRect().contains(scene_pos): return
             
         mouse_point = self._vb.mapSceneToView(scene_pos)
+        # "Snap-to-point": Se busca el índice del frame real más cercano al clic
         idx = np.abs(self._x_data - mouse_point.x()).argmin()
         frame_index = self._x_data[idx]
         
+        self.update_marker_position(frame_index)
+        self.frame_clicked_signal.emit(frame_index)
+        
+    def update_marker_position(self, frame_index: int) -> None:
+        """Mueve los elementos de feedback visual a un frame específico."""
         self.v_line.setPos(frame_index); self.v_line.show()
 
         main_curve_display_name = self.CURVE_MAP.get('left_knee_angle')
@@ -114,8 +122,6 @@ class PlotWidget(QWidget):
             if curve_idx < len(main_curve.yData):
                 self.marker.setData([frame_index], [main_curve.yData[curve_idx]])
 
-        self.frame_clicked_signal.emit(frame_index)
-        
     def plot_data(self, df_metrics: pd.DataFrame) -> None:
         """Dibuja las métricas desde el DataFrame y activa los elementos visuales."""
         self.clear_plots()
@@ -129,6 +135,7 @@ class PlotWidget(QWidget):
             
             self._x_data = x_series.dropna().to_numpy(dtype=int)
 
+            # Itera sobre el mapa de curvas para dibujarlas dinámicamente
             for logical_name, display_name in self.CURVE_MAP.items():
                 y_series = get_first_available_series(df_metrics, logical_name)
                 if y_series is not None:
@@ -138,10 +145,12 @@ class PlotWidget(QWidget):
                         pen_color = plot_params.line_color_right if is_right_curve else plot_params.line_color_left
                         pen_style = Qt.DashLine if is_right_curve else Qt.SolidLine
                         pen = pg.mkPen(color=pen_color, width=plot_params.line_thickness, style=pen_style)
+                        
+                        # Añadir 'symbol' crea los puntos que muestran tooltips al pasar el ratón
                         curve = self.plot_item.plot(data[x_series.name], data[y_series.name], pen=pen, name=display_name,
                                                     symbol='o', symbolSize=5, symbolBrush=pen_color)
                         self._plotted_curves[display_name] = curve
-
+            
             self.h_line_low.setPos(settings.squat_params.low_thresh); self.h_line_low.show()
             self.h_line_high.setPos(settings.squat_params.high_thresh); self.h_line_high.show()
             
@@ -151,16 +160,18 @@ class PlotWidget(QWidget):
         except Exception as e:
             logger.error(f"Error fatal al dibujar los datos: {e}", exc_info=True)
 
-    def set_curve_visibility(self, name: str, visible: bool):
+    def set_curve_visibility(self, name: str, visible: bool) -> None:
         """Muestra u oculta una curva por su nombre de leyenda."""
         if name in self._plotted_curves:
             self._plotted_curves[name].setVisible(visible)
 
-    def clear_plots(self):
+    def clear_plots(self) -> None:
         """Limpia solo los elementos dinámicos (curvas, marcadores)."""
         for curve in self._plotted_curves.values(): self.plot_item.removeItem(curve)
-        self._plotted_curves.clear(); self._x_data = None
-        self.v_line.hide(); self.marker.clear(); self.h_line_low.hide(); self.h_line_high.hide()
+        self._plotted_curves.clear()
+        self._x_data = None
+        self.v_line.hide(); self.marker.clear()
+        self.h_line_low.hide(); self.h_line_high.hide()
         if self.legend: self.legend.setVisible(False)
 
     def _get_plot_series(self, df_metrics: pd.DataFrame) -> Tuple[Optional[pd.Series], ...]:
