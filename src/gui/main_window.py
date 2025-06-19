@@ -49,13 +49,25 @@ class MainWindow(QMainWindow):
     def _init_ui(self):
         """Construye e inicializa todos los componentes de la interfaz de usuario."""
         self.tabs = QTabWidget()
-        self.tabs.addTab(self._create_home_tab(), "Inicio")
-        
-        self.results_panel = ResultsPanel(self)
-        self.tabs.addTab(self.results_panel, "Resultados")
-        self.tabs.setTabEnabled(1, False) 
+        # Conectar para refrescar al cambiar de pestaña
+        self.tabs.currentChanged.connect(self._on_tab_changed)
 
-        self.tabs.addTab(self._create_settings_tab(), "Ajustes")
+        # Pestaña Inicio
+        home = self._create_home_tab()
+        home.setAutoFillBackground(True)
+        self.tabs.addTab(home, "Inicio")
+        
+        # Pestaña Resultados
+        self.results_panel = ResultsPanel(self)
+        self.results_panel.setAutoFillBackground(True)
+        self.tabs.addTab(self.results_panel, "Resultados")
+        self.tabs.setTabEnabled(1, False)
+
+        # Pestaña Ajustes
+        settings_tab = self._create_settings_tab()
+        settings_tab.setAutoFillBackground(True)
+        self.tabs.addTab(settings_tab, "Ajustes")
+
         self.setCentralWidget(self.tabs)
 
     def _create_home_tab(self) -> QWidget:
@@ -102,6 +114,12 @@ class MainWindow(QMainWindow):
         
         return widget
     
+    def _on_tab_changed(self, index: int):
+        """Forzar repintado al cambiar de pestaña."""
+        w = self.tabs.widget(index)
+        w.update()
+        w.repaint()
+
     def _apply_theme(self, is_dark: bool):
         """Aplica el tema actual a todos los componentes relevantes de la GUI."""
         load_stylesheet(QApplication.instance(), self.project_root, dark=is_dark)
