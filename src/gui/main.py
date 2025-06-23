@@ -1,46 +1,61 @@
 # src/gui/main.py
 
-import sys
 import os
+# ===========================
+#  Silenciar logs “verborrea” de C++ / glog / absl / TF
+# ===========================
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['GLOG_minloglevel']   = '2'
+os.environ['GLOG_logtostderr']   = '1'
+
+# silenciar logs de TFLite y MediaPipe
+os.environ['TFLITE_CPP_MIN_LOG_LEVEL'] = '3'
+
+import sys
 import logging
 from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import QSettings
+from .main import find_project_root, setup_logging
 
-# --- Importamos desde la nueva utilidad ---
-from .style_utils import load_stylesheet
+# 2) Utils propias
+from .main_window import MainWindow
 
 def find_project_root():
     path = os.path.abspath(os.path.dirname(__file__))
     while os.path.basename(path) != 'gym-performance-analysis':
-        parent_path = os.path.dirname(path)
-        if parent_path == path: return os.getcwd()
-        path = parent_path
+        parent = os.path.dirname(path)
+        if parent == path:
+            return os.getcwd()
+        path = parent
     return path
 
-def setup_logging(project_root):
+def setup_logging(project_root: str):
     log_dir = os.path.join(project_root, 'logs')
     os.makedirs(log_dir, exist_ok=True)
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s', handlers=[logging.FileHandler(os.path.join(log_dir, 'app.log'), encoding='utf-8'), logging.StreamHandler(sys.stdout)])
+    fmt = '%(asctime)s [%(levelname)s] %(message)s'
+    handlers = [
+        logging.FileHandler(os.path.join(log_dir, 'app.log'), encoding='utf-8'),
+        logging.StreamHandler(sys.stdout)
+    ]
+    logging.basicConfig(level=logging.INFO, format=fmt, handlers=handlers)
+
+    # 3) Silenciar loggers Python de TF / MP
+    logging.getLogger('tensorflow').setLevel(logging.ERROR)
+    logging.getLogger('tflite_runtime').setLevel(logging.ERROR)
+    logging.getLogger('mediapipe').setLevel(logging.ERROR)
 
 def run_app():
-    """Función para encapsular la creación y ejecución de la app."""
-    # Añadimos el path del proyecto para que los imports desde 'src' funcionen bien
-    PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    # Determina la raíz del proyecto buscando la carpeta gym-performance-analysis
+    PROJECT_ROOT = find_project_root()
     sys.path.insert(0, PROJECT_ROOT)
-    
-    # Importamos MainWindow aquí dentro para asegurar que el path está configurado
-    from src.gui.main_window import MainWindow
-    from src.gui.style_utils import load_stylesheet
+
+    setup_logging(PROJECT_ROOT)
+    logging.info("Arrancando Gym Performance Analyzer")
 
     app = QApplication(sys.argv)
-    
-    # La carga del stylesheet ahora puede usar la ruta del proyecto
-    load_stylesheet(app, PROJECT_ROOT, dark=True) 
-
+    # No forzamos aquí el tema: _apply_theme del MainWindow leerá el checkbox
     window = MainWindow(project_root=PROJECT_ROOT)
     window.show()
     sys.exit(app.exec_())
 
 if __name__ == "__main__":
-    # Esta es la única parte que se ejecuta cuando lanzas el script directamente
     run_app()
