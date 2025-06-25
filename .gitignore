@@ -1,7 +1,7 @@
 # Ignorar entorno virtual
 .venv/
-gym_performance_env/
-
+gym_env/
+.env
 
 # Archivos compilados de Python
 __pycache__/

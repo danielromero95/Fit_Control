@@ -14,7 +14,6 @@ os.environ['TFLITE_CPP_MIN_LOG_LEVEL'] = '3'
 import sys
 import logging
 from PyQt5.QtWidgets import QApplication
-from .main import find_project_root, setup_logging
 
 # 2) Utils propias
 from .main_window import MainWindow
