@@ -61,7 +61,7 @@ class MainWindow(QMainWindow):
         
         self._init_ui()
         self._load_settings()
-        self._apply_theme(self.dark_mode_check.isChecked())
+        self._apply_theme(self.settings_page.dark_mode_check.isChecked())
 
     def _init_ui(self):
         """Construye e inicializa todos los componentes de la interfaz de usuario."""
