@@ -30,3 +30,5 @@ dependencies:
     - matplotlib  # Para las gráficas en la GUI
     - streamlit   # Para la interfaz web
     - qtawesome
+    - pynstaller
+    - pyqtgraph  # Para gráficos interactivos en la GUI
