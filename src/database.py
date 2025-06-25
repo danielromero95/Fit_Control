@@ -39,6 +39,17 @@ def get_all_analysis_results() -> list:
     conn.close()
     return [dict(row) for row in rows]
 
+def get_analysis_by_id(analysis_id: int) -> Dict[str, Any] | None:
+    """Obtiene un único análisis por su ID."""
+    conn = get_db_connection()
+    cursor = conn.execute(
+        "SELECT * FROM analysis_results WHERE id = ?",
+        (analysis_id,)
+    )
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
 def save_analysis_results(results: Dict[str, Any], gui_settings: Dict[str, Any]) -> int | None:
     """Guarda los resultados de un análisis.
 
