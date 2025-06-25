@@ -3,7 +3,7 @@
 import cv2
 import numpy as np
 import logging
-from src import config
+from src import constants, config
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ def render_landmarks_on_video_hq(
         return
 
     orig_h, orig_w, _ = original_frames[0].shape
-    proc_w, proc_h = config.DEFAULT_TARGET_WIDTH, config.DEFAULT_TARGET_HEIGHT
+    proc_w, proc_h = constants.DEFAULT_TARGET_WIDTH, constants.DEFAULT_TARGET_HEIGHT
     
     # Factores de escala para pasar del mundo de 256x256 al mundo de alta resolución
     scale_x = orig_w / proc_w
@@ -75,11 +75,11 @@ def render_landmarks_on_video_hq(
                     points_to_draw[lm_idx] = (final_x, final_y)
 
             # Dibujar el esqueleto con los puntos ya transformados
-            for p1_idx, p2_idx in config.POSE_CONNECTIONS:
+            for p1_idx, p2_idx in constants.POSE_CONNECTIONS:
                 if p1_idx in points_to_draw and p2_idx in points_to_draw:
-                    cv2.line(annotated_frame, points_to_draw[p1_idx], points_to_draw[p2_idx], config.CONNECTION_COLOR, 2)
+                    cv2.line(annotated_frame, points_to_draw[p1_idx], points_to_draw[p2_idx], constants.CONNECTION_COLOR, 2)
             for point in points_to_draw.values():
-                cv2.circle(annotated_frame, point, 4, config.LANDMARK_COLOR, -1)
+                cv2.circle(annotated_frame, point, 4, constants.LANDMARK_COLOR, -1)
         
         writer.write(annotated_frame)
 
