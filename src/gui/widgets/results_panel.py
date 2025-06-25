@@ -164,7 +164,14 @@ class ResultsPanel(QWidget):
             self.video_player.media_player.positionChanged.disconnect(self.on_video_position_changed)
         except TypeError:
             pass
-        
+
         self.rep_counter.setText("0"); self.status_label.setText("Listo para analizar")
         self.plot_widget.clear_plots(); self.fault_list.clear()
         self.video_player.clear_media(); self.visibility_group.hide()
+
+    def show_empty_state(self) -> None:
+        """Muestra un mensaje cuando no hay análisis guardados."""
+        self.clear_results()
+        self.status_label.setText(
+            "No hay análisis guardados. ¡Analiza tu primer vídeo para empezar!"
+        )
