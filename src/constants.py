@@ -27,3 +27,14 @@ class MetricType(str, Enum):
     """Define los tipos de métricas que nuestro analizador puede calcular."""
     ANGLE = "angle"
     HEIGHT = "height"
+
+# Conexiones del modelo de pose de MediaPipe
+try:
+    from mediapipe.python.solutions.pose import POSE_CONNECTIONS as MP_POSE_CONNECTIONS
+    POSE_CONNECTIONS = MP_POSE_CONNECTIONS
+except Exception:  # pragma: no cover - MediaPipe not available
+    POSE_CONNECTIONS = []
+
+# Colores por defecto para dibujar el esqueleto
+CONNECTION_COLOR = (0, 255, 0)  # BGR
+LANDMARK_COLOR = (0, 0, 255)    # BGR
