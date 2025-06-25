@@ -4,7 +4,7 @@ import yaml
 from pydantic import BaseModel, Field, validator
 import logging
 import os
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict
 
 from src.constants import MetricType
 
@@ -43,8 +43,9 @@ class MetricDefinition(BaseModel):
                         raise ValueError(f"Landmark '{point}' no es un miembro válido de PoseLandmark.")
         return v
 
-class SquatParams(BaseModel):
-    """Parámetros específicos para un tipo de ejercicio (ej. sentadilla)."""
+# Renombrado de SquatParams a ExerciseParams para admitir múltiples ejercicios
+class ExerciseParams(BaseModel):
+    """Parámetros específicos para un tipo de ejercicio."""
     metric_definitions: List[MetricDefinition]
     rep_counter_metric: str
     high_thresh: float
@@ -114,7 +115,8 @@ class DrawingConfig(BaseModel):
 class AppConfig(BaseModel):
     """Modelo principal que contiene toda la configuración de la aplicación."""
     analysis_params: AnalysisParams
-    squat_params: SquatParams
+    # Diccionario de parámetros por ejercicio
+    exercises: Dict[str, ExerciseParams]
     performance_params: PerformanceParams
     drawing: DrawingConfig
 

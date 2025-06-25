@@ -9,7 +9,7 @@ from scipy.signal import find_peaks
 import logging
 from typing import List, Tuple, Dict, Any
 
-from src.config import settings, SquatParams, MetricDefinition
+from src.config import settings, ExerciseParams, MetricDefinition
 from src.constants import MetricType
 from src.B_pose_estimation.estimators import EstimationResult
 from src.D_modeling.math_utils import calculate_angle_3d
@@ -82,7 +82,7 @@ def calculate_metrics(
     return pd.DataFrame.from_dict(data)
 
 
-def count_repetitions(df_metrics: pd.DataFrame, params: SquatParams) -> int:
+def count_repetitions(df_metrics: pd.DataFrame, params: ExerciseParams) -> int:
     """
     Wrapper unificado que cuenta repeticiones usando el robusto algoritmo de detección de valles.
     Recibe todos los parámetros a través del objeto de configuración.

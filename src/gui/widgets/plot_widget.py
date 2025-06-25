@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout
 from typing import Optional, Tuple, List, Dict, Any
 
 from src.gui.gui_utils import get_first_available_series
-from src.config import settings
+from src.config import settings, ExerciseParams
 
 logger = logging.getLogger(__name__)
 
@@ -134,7 +134,7 @@ class PlotWidget(QWidget):
             if curve_idx < len(main_curve.yData):
                 self.marker.setData([frame_index], [main_curve.yData[curve_idx]])
 
-    def plot_data(self, df_metrics: pd.DataFrame) -> None:
+    def plot_data(self, df_metrics: pd.DataFrame, params: ExerciseParams) -> None:
         """Dibuja las métricas desde el DataFrame y activa los elementos visuales."""
         # 1) Limpiamos todo lo anterior
         self.clear_plots()
@@ -161,9 +161,9 @@ class PlotWidget(QWidget):
             
             # Muestra las líneas de umbral si hay curvas dibujadas
             if self._plotted_curves:
-                self.h_line_low.setPos(settings.squat_params.low_thresh)
+                self.h_line_low.setPos(params.low_thresh)
                 self.h_line_low.show()
-                self.h_line_high.setPos(settings.squat_params.high_thresh)
+                self.h_line_high.setPos(params.high_thresh)
                 self.h_line_high.show()
             
             self.legend.setVisible(bool(self._plotted_curves))

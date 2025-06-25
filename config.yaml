@@ -14,23 +14,34 @@ analysis_params:
   default_rotate: 90
 
 # =================================================
-# 2. PARÁMETROS DEL EJERCICIO: SENTADILLA (SQUAT)
+# 2. PARÁMETROS DE EJERCICIOS
 # =================================================
-squat_params:
-  # Define las "recetas" de las métricas que el motor de análisis debe calcular.
-  metric_definitions:
-    - { name: 'rodilla_izq', type: 'angle', point_names: ['LEFT_HIP', 'LEFT_KNEE', 'LEFT_ANKLE'] }
-    - { name: 'rodilla_der', type: 'angle', point_names: ['RIGHT_HIP', 'RIGHT_KNEE', 'RIGHT_ANKLE'] }
-    - { name: 'cadera_izq', type: 'angle', point_names: ['LEFT_SHOULDER', 'LEFT_HIP', 'LEFT_KNEE'] }
-    - { name: 'altura_cadera', type: 'height', point_name: 'LEFT_HIP' }
+exercises:
+  squat:
+    # Define las "recetas" de las métricas que el motor de análisis debe calcular.
+    metric_definitions:
+      - { name: 'rodilla_izq', type: 'angle', point_names: ['LEFT_HIP', 'LEFT_KNEE', 'LEFT_ANKLE'] }
+      - { name: 'rodilla_der', type: 'angle', point_names: ['RIGHT_HIP', 'RIGHT_KNEE', 'RIGHT_ANKLE'] }
+      - { name: 'cadera_izq', type: 'angle', point_names: ['LEFT_SHOULDER', 'LEFT_HIP', 'LEFT_KNEE'] }
+      - { name: 'altura_cadera', type: 'height', point_name: 'LEFT_HIP' }
 
-  # Parámetros para el algoritmo de conteo de repeticiones
-  rep_counter_metric: 'rodilla_izq'
-  high_thresh: 140.0
-  low_thresh: 80.0
-  depth_fail_thresh: 90.0
-  peak_prominence: 10.0
-  peak_distance: 15
+    # Parámetros para el algoritmo de conteo de repeticiones
+    rep_counter_metric: 'rodilla_izq'
+    high_thresh: 140.0
+    low_thresh: 80.0
+    depth_fail_thresh: 90.0
+    peak_prominence: 10.0
+    peak_distance: 15
+
+  bench_press:
+    metric_definitions:
+      - { name: 'codo_izq', type: 'angle', point_names: ['LEFT_SHOULDER', 'LEFT_ELBOW', 'LEFT_WRIST'] }
+    rep_counter_metric: 'codo_izq'
+    high_thresh: 180.0
+    low_thresh: 90.0
+    depth_fail_thresh: 0.0
+    peak_prominence: 10.0
+    peak_distance: 15
 
 # =================================================
 # 3. PARÁMETROS DE RENDIMIENTO

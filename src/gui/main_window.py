@@ -3,9 +3,10 @@
 import os
 import cv2
 import logging
-from PyQt5.QtWidgets import (QMainWindow, QWidget, QTabWidget, QVBoxLayout, QFormLayout, 
-                             QHBoxLayout, QPushButton, QProgressBar, QLabel, QSpinBox, 
-                             QCheckBox, QLineEdit, QFileDialog, QMessageBox, QApplication)
+from PyQt5.QtWidgets import (QMainWindow, QWidget, QTabWidget, QVBoxLayout, QFormLayout,
+                             QHBoxLayout, QPushButton, QProgressBar, QLabel, QSpinBox,
+                             QCheckBox, QLineEdit, QFileDialog, QMessageBox, QApplication,
+                             QComboBox)
 from PyQt5.QtCore import Qt, QSettings, QByteArray
 from PyQt5.QtGui import QPixmap, QImage, QFont, QTransform, QCloseEvent
 from typing import Dict, Any, Optional, Callable
@@ -15,6 +16,7 @@ from src.gui.style_utils import load_stylesheet
 from src.gui.widgets.video_display import VideoDisplayWidget
 from .widgets.results_panel import ResultsPanel
 from src.gui.worker import AnalysisWorker
+from src.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -103,13 +105,18 @@ class MainWindow(QMainWindow):
         
         self.output_dir_edit = QLineEdit()
         self.sample_rate_spin = QSpinBox(); self.sample_rate_spin.setMinimum(1)
-        
+
+        self.exercise_combo = QComboBox()
+        for name in settings.exercises.keys():
+            self.exercise_combo.addItem(name)
+
         self.dark_mode_check = QCheckBox("Modo Oscuro")
         # Usamos la señal 'toggled(bool)' que es más directa y limpia para este caso.
         self.dark_mode_check.toggled.connect(self._apply_theme)
 
         layout.addRow("Carpeta de Salida:", self.output_dir_edit)
         layout.addRow("Sample Rate (procesar 1 de cada N frames):", self.sample_rate_spin)
+        layout.addRow("Ejercicio:", self.exercise_combo)
         layout.addRow(self.dark_mode_check)
         
         return widget
@@ -176,7 +183,8 @@ class MainWindow(QMainWindow):
             'output_dir': self.output_dir_edit.text().strip(),
             'sample_rate': self.sample_rate_spin.value(),
             'rotate': self.current_rotation,
-            'dark_mode': self.dark_mode_check.isChecked()
+            'dark_mode': self.dark_mode_check.isChecked(),
+            'exercise': self.exercise_combo.currentText()
         }
         
         self.worker = AnalysisWorker(self.video_path, gui_settings)
@@ -217,7 +225,12 @@ class MainWindow(QMainWindow):
         """Carga las preferencias del usuario guardadas en la sesión anterior."""
         self.output_dir_edit.setText(self.q_settings.value("output_dir", os.path.join(self.project_root, 'data', 'processed')))
         self.sample_rate_spin.setValue(self.q_settings.value("sample_rate", app_constants.DEFAULT_SAMPLE_RATE, type=int))
-        
+
+        saved_exercise = self.q_settings.value("exercise", next(iter(settings.exercises)))
+        index = self.exercise_combo.findText(saved_exercise)
+        if index >= 0:
+            self.exercise_combo.setCurrentIndex(index)
+
         geometry = self.q_settings.value("geometry", QByteArray())
         if isinstance(geometry, QByteArray) and not geometry.isEmpty():
             self.restoreGeometry(geometry)
@@ -232,6 +245,7 @@ class MainWindow(QMainWindow):
         """Guarda las preferencias del usuario al cerrar la aplicación."""
         self.q_settings.setValue("output_dir", self.output_dir_edit.text())
         self.q_settings.setValue("sample_rate", self.sample_rate_spin.value())
+        self.q_settings.setValue("exercise", self.exercise_combo.currentText())
         self.q_settings.setValue("dark_mode", self.dark_mode_check.isChecked())
         self.q_settings.setValue("geometry", self.saveGeometry())
         super().closeEvent(event)
