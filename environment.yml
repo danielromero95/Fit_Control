@@ -28,3 +28,4 @@ dependencies:
     - mediapipe==0.10.21
     - moviepy==1.0.3
     - matplotlib  # Para las gráficas en la GUI
+    - streamlit   # Para la interfaz web
