@@ -25,6 +25,7 @@ import src.constants as app_constants
 from src.gui.style_utils import load_stylesheet
 from src.gui.worker import AnalysisWorker
 from src.config import settings
+from src import database
 from .pages import (
     DashboardPage,
     AnalysisPage,
@@ -50,6 +51,7 @@ class MainWindow(QMainWindow):
         super().__init__(parent)
         self.project_root = project_root
         self.video_path: Optional[str] = None
+        self.gui_settings: Dict[str, Any] = {}
         
         # QSettings se usa para guardar y cargar las preferencias del usuario entre sesiones.
         self.q_settings = QSettings(app_constants.ORGANIZATION_NAME, app_constants.APP_NAME)
@@ -206,8 +208,10 @@ class MainWindow(QMainWindow):
             "rotate": self.current_rotation,
             "dark_mode": self.settings_page.dark_mode_check.isChecked(),
             "exercise": self.settings_page.exercise_combo.currentText(),
+            "video_path": self.video_path,
         }
-        
+
+        self.gui_settings = gui_settings
         self.worker = AnalysisWorker(self.video_path, gui_settings)
         self.worker.progress.connect(self.analysis_page.progress_bar.setValue)
         self.worker.error.connect(self._on_processing_error)
@@ -238,6 +242,12 @@ class MainWindow(QMainWindow):
     def _on_processing_finished(self, results: Dict[str, Any]):
         """Slot que se activa cuando el análisis termina con éxito."""
         self._set_processing_state(False)
+        try:
+            database.save_analysis_results(results, getattr(self, 'gui_settings', {}))
+            self.statusBar().showMessage("Resultados guardados en la base de datos", 5000)
+        except Exception as e:
+            logger.error(f"Error guardando resultados en DB: {e}")
+
         rep_count = results.get("repeticiones_contadas", "N/A")
         self.analysis_page.results_label.setText(
             f"¡Análisis Completo! Repeticiones: {rep_count}"

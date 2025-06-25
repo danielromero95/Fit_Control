@@ -15,6 +15,8 @@ import sys
 import logging
 from PyQt5.QtWidgets import QApplication
 
+from src import database
+
 # 2) Utils propias
 from .main_window import MainWindow
 
@@ -49,6 +51,8 @@ def run_app():
 
     setup_logging(PROJECT_ROOT)
     logging.info("Arrancando Gym Performance Analyzer")
+
+    database.init_db()
 
     app = QApplication(sys.argv)
     # No forzamos aquí el tema: _apply_theme del MainWindow leerá el checkbox
