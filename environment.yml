@@ -29,3 +29,4 @@ dependencies:
     - moviepy==1.0.3
     - matplotlib  # Para las gráficas en la GUI
     - streamlit   # Para la interfaz web
+    - qtawesome
