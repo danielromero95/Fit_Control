@@ -31,7 +31,6 @@ conda activate gym_env
 │   ├── B_pose_estimation/       # Estimadores y utilidades de pose
 │   │   ├── estimators.py
 │   │   ├── metrics.py
-│   │   └── processing.py
 │   ├── D_modeling/              # Cálculo de métricas y conteo de repeticiones
 │   │   ├── exercise_analyzer.py
 │   │   ├── fault_detection.py
