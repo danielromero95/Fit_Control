@@ -10,6 +10,7 @@ from typing import Dict, Any, Optional
 
 from .plot_widget import PlotWidget
 from .video_player import VideoPlayerWidget
+from src.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +124,9 @@ class ResultsPanel(QWidget):
             return
 
         self.status_label.setText("Estado: Análisis completado.")
-        self.plot_widget.plot_data(df)
+        exercise_name = results.get("exercise", next(iter(settings.exercises)))
+        exercise_params = settings.exercises.get(exercise_name)
+        self.plot_widget.plot_data(df, exercise_params)
         
         curves_found = self.plot_widget._plotted_curves.keys()
         any_cb_visible = False

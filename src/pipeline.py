@@ -121,14 +121,16 @@ def run_full_pipeline_in_memory(
         t0 = perf_counter()
         notify(80, "FASE 3: Analizando métricas y repeticiones...")
         
+        selected_exercise = settings.get('exercise', next(iter(global_settings.exercises)))
+        exercise_params = global_settings.exercises[selected_exercise]
+
         df_metrics = calculate_metrics(
-            estimation_results, 
+            estimation_results,
             fps,
-            metric_definitions=global_settings.squat_params.metric_definitions
+            metric_definitions=exercise_params.metric_definitions
         )
-        
-        # --- CAMBIO: Pasamos el objeto de parámetros completo ---
-        n_reps = count_repetitions(df_metrics, params=global_settings.squat_params)
+
+        n_reps = count_repetitions(df_metrics, params=exercise_params)
         
         faults_detected = detect_faults(df_metrics, {"reps": n_reps})
         timings['fase_3_analysis'] = perf_counter() - t0
@@ -180,7 +182,8 @@ def run_full_pipeline_in_memory(
             "dataframe_metricas": df_metrics,
             "debug_video_path": debug_video_path,
             "fallos_detectados": faults_detected,
-            "fps": fps # Añadimos fps a los resultados para que la GUI lo use
+            "fps": fps, # Añadimos fps a los resultados para que la GUI lo use
+            "exercise": selected_exercise
         }
 
     except Exception as e:
