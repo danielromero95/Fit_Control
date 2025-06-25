@@ -3,7 +3,7 @@
 import numpy as np
 import pandas as pd
 import logging
-from .estimators import PoseEstimator, CroppedPoseEstimator
+from .estimators import BlazePose3DEstimator, CroppedPoseEstimator
 from .metrics import normalize_landmarks, extract_joint_angles, calculate_distances, calculate_angular_velocity, calculate_symmetry
 
 logger = logging.getLogger(__name__)
@@ -11,7 +11,11 @@ logger = logging.getLogger(__name__)
 def extract_landmarks_from_frames(frames: list, use_crop: bool = False, visibility_threshold: float = 0.5) -> pd.DataFrame:
     """Toma imágenes, extrae landmarks y devuelve un DataFrame raw."""
     logger.info(f"Extrayendo landmarks de {len(frames)} frames. Usando crop: {use_crop}")
-    estimator = CroppedPoseEstimator(min_detection_confidence=visibility_threshold) if use_crop else PoseEstimator(min_detection_confidence=visibility_threshold)
+    estimator = (
+        CroppedPoseEstimator(min_detection_confidence=visibility_threshold)
+        if use_crop
+        else BlazePose3DEstimator()
+    )
     
     rows = []
     for i, img in enumerate(frames):
