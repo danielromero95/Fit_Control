@@ -3,20 +3,35 @@
 import os
 import cv2
 import logging
-from PyQt5.QtWidgets import (QMainWindow, QWidget, QTabWidget, QVBoxLayout, QFormLayout,
-                             QHBoxLayout, QPushButton, QProgressBar, QLabel, QSpinBox,
-                             QCheckBox, QLineEdit, QFileDialog, QMessageBox, QApplication,
-                             QComboBox)
+from PyQt5.QtWidgets import (
+    QMainWindow,
+    QWidget,
+    QStackedWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QPushButton,
+    QFileDialog,
+    QMessageBox,
+    QApplication,
+    QButtonGroup,
+)
 from PyQt5.QtCore import Qt, QSettings, QByteArray
-from PyQt5.QtGui import QPixmap, QImage, QFont, QTransform, QCloseEvent
-from typing import Dict, Any, Optional, Callable
+from PyQt5.QtGui import QPixmap, QImage, QTransform, QCloseEvent
+from typing import Dict, Any, Optional
+
+import qtawesome as qta
 
 import src.constants as app_constants
 from src.gui.style_utils import load_stylesheet
-from src.gui.widgets.video_display import VideoDisplayWidget
-from .widgets.results_panel import ResultsPanel
 from src.gui.worker import AnalysisWorker
 from src.config import settings
+from .pages import (
+    DashboardPage,
+    AnalysisPage,
+    PlansPage,
+    ProgressPage,
+    SettingsPage,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -50,88 +65,84 @@ class MainWindow(QMainWindow):
 
     def _init_ui(self):
         """Construye e inicializa todos los componentes de la interfaz de usuario."""
-        self.tabs = QTabWidget()
-        # Conectar para refrescar al cambiar de pestaña
-        self.tabs.currentChanged.connect(self._on_tab_changed)
+        container = QWidget()
+        main_layout = QHBoxLayout(container)
 
-        # Pestaña Inicio
-        home = self._create_home_tab()
-        home.setAutoFillBackground(True)
-        self.tabs.addTab(home, "Inicio")
-        
-        # Pestaña Resultados
-        self.results_panel = ResultsPanel(self)
-        self.results_panel.setAutoFillBackground(True)
-        self.tabs.addTab(self.results_panel, "Resultados")
-        self.tabs.setTabEnabled(1, False)
+        nav_widget = QWidget()
+        self.nav_layout = QVBoxLayout(nav_widget)
+        self.nav_layout.setContentsMargins(0, 0, 0, 0)
+        self.nav_layout.setSpacing(10)
 
-        # Pestaña Ajustes
-        settings_tab = self._create_settings_tab()
-        settings_tab.setAutoFillBackground(True)
-        self.tabs.addTab(settings_tab, "Ajustes")
+        self.nav_group = QButtonGroup(self)
+        self.nav_group.setExclusive(True)
 
-        self.setCentralWidget(self.tabs)
+        self.stack = QStackedWidget()
 
-    def _create_home_tab(self) -> QWidget:
-        """Crea y devuelve el widget para la pestaña 'Inicio'."""
-        widget = QWidget(); layout = QVBoxLayout(widget)
-        
-        video_container = QWidget(); video_container.setFixedHeight(400)
-        video_container_layout = QVBoxLayout(video_container); video_container_layout.setContentsMargins(0,0,0,0)
-        
-        self.video_display = VideoDisplayWidget()
-        self.video_display.file_dropped.connect(self._on_video_selected)
-        self.video_display.rotation_requested.connect(self._on_rotation_requested)
-        video_container_layout.addWidget(self.video_display)
-        layout.addWidget(video_container)
-        
-        self.select_video_btn = QPushButton("Seleccionar Vídeo..."); self.select_video_btn.clicked.connect(self._open_file_dialog)
-        layout.addWidget(self.select_video_btn)
+        # Páginas
+        self.dashboard_page = DashboardPage()
+        self.analysis_page = AnalysisPage(
+            self._on_video_selected,
+            self._on_rotation_requested,
+            self._open_file_dialog,
+            self._start_analysis,
+        )
+        self.progress_page = ProgressPage()
+        self.results_panel = self.progress_page.results_panel
+        self.plans_page = PlansPage()
+        self.settings_page = SettingsPage(settings.exercises, self._apply_theme)
 
-        self.progress_bar = QProgressBar(); layout.addWidget(self.progress_bar)
-        
-        self.results_label = QLabel("Arrastra un vídeo o selecciónalo para empezar"); self.results_label.setAlignment(Qt.AlignCenter)
-        font = QFont(); font.setPointSize(12); self.results_label.setFont(font)
-        layout.addWidget(self.results_label)
-        
-        self.process_btn = QPushButton("Analizar Vídeo"); self.process_btn.setEnabled(False); self.process_btn.clicked.connect(self._start_analysis)
-        layout.addWidget(self.process_btn)
-        
-        return widget
+        self.stack.addWidget(self.dashboard_page)
+        self.stack.addWidget(self.analysis_page)
+        self.stack.addWidget(self.plans_page)
+        self.stack.addWidget(self.progress_page)
+        self.stack.addWidget(self.settings_page)
 
-    def _create_settings_tab(self) -> QWidget:
-        """Crea y devuelve el widget para la pestaña 'Ajustes'."""
-        widget = QWidget(); layout = QFormLayout(widget)
-        
-        self.output_dir_edit = QLineEdit()
-        self.sample_rate_spin = QSpinBox(); self.sample_rate_spin.setMinimum(1)
+        # Botones de navegación
+        self.nav_buttons = []
+        buttons = [
+            ("fa5s.tachometer-alt", "Dashboard"),
+            ("fa5s.camera-retro", "Analizar"),
+            ("fa5s.calendar-alt", "Planes"),
+            ("fa5s.chart-line", "Progreso"),
+            ("fa5s.cog", "Ajustes"),
+        ]
+        for idx, (icon_name, text) in enumerate(buttons):
+            btn = self._create_nav_button(icon_name, text, idx)
+            self.nav_buttons.append(btn)
 
-        self.exercise_combo = QComboBox()
-        for name in settings.exercises.keys():
-            self.exercise_combo.addItem(name)
+        self.nav_layout.addStretch(1)
 
-        self.dark_mode_check = QCheckBox("Modo Oscuro")
-        # Usamos la señal 'toggled(bool)' que es más directa y limpia para este caso.
-        self.dark_mode_check.toggled.connect(self._apply_theme)
+        main_layout.addWidget(nav_widget)
+        main_layout.addWidget(self.stack, 1)
 
-        layout.addRow("Carpeta de Salida:", self.output_dir_edit)
-        layout.addRow("Sample Rate (procesar 1 de cada N frames):", self.sample_rate_spin)
-        layout.addRow("Ejercicio:", self.exercise_combo)
-        layout.addRow(self.dark_mode_check)
-        
-        return widget
-    
-    def _on_tab_changed(self, index: int):
-        """Forzar repintado al cambiar de pestaña."""
-        w = self.tabs.widget(index)
+        self.setCentralWidget(container)
+        self._navigate(0)
+
+    def _navigate(self, index: int):
+        """Cambia la página visible en el stacked widget y actualiza los botones."""
+        self.stack.setCurrentIndex(index)
+        for i, btn in enumerate(getattr(self, "nav_buttons", [])):
+            btn.setChecked(i == index)
+        w = self.stack.currentWidget()
         w.update()
         w.repaint()
+
+    def _create_nav_button(self, icon_name: str, text: str, page_index: int) -> QPushButton:
+        btn = QPushButton(text)
+        btn.setIcon(qta.icon(icon_name))
+        btn.setCheckable(True)
+        self.nav_group.addButton(btn, page_index)
+        btn.clicked.connect(lambda _: self._navigate(page_index))
+        self.nav_layout.addWidget(btn)
+        return btn
+
+    
 
     def _apply_theme(self, is_dark: bool):
         """Aplica el tema actual a todos los componentes relevantes de la GUI."""
         load_stylesheet(QApplication.instance(), self.project_root, dark=is_dark)
-        if hasattr(self, 'results_panel'):
-            self.results_panel.plot_widget.set_theme(is_dark)
+        if hasattr(self, 'progress_page'):
+            self.progress_page.set_theme(is_dark)
 
     def _on_video_selected(self, path: str):
         """
@@ -140,7 +151,9 @@ class MainWindow(QMainWindow):
         """
         self.video_path = path
         self.current_rotation = 0
-        self.results_label.setText(f"Vídeo cargado: {os.path.basename(path)}")
+        self.analysis_page.results_label.setText(
+            f"Vídeo cargado: {os.path.basename(path)}"
+        )
         
         try:
             from src.A_preprocessing.video_metadata import get_video_rotation
@@ -154,12 +167,14 @@ class MainWindow(QMainWindow):
             self.original_pixmap = QPixmap.fromImage(QImage(frame_rgb.data, frame_rgb.shape[1], frame_rgb.shape[0], frame_rgb.strides[0], QImage.Format_RGB888))
             self._update_thumbnail()
         
-        self.process_btn.setEnabled(True)
-        self.progress_bar.setValue(0)
-        self.results_panel.clear_results()
-        self.tabs.setTabEnabled(1, False)
-        # Mejora de UX: Vuelve siempre a la pestaña 'Inicio'
-        self.tabs.setCurrentIndex(0)
+        self.analysis_page.process_btn.setEnabled(True)
+        self.analysis_page.progress_bar.setValue(0)
+        self.progress_page.clear_results()
+        # Deshabilitamos el acceso a la página de progreso hasta tener resultados
+        if len(self.nav_buttons) > 3:
+            self.nav_buttons[3].setEnabled(False)
+        # Mejora de UX: volvemos a la página de análisis
+        self._navigate(1)
         
     def _on_rotation_requested(self, angle: int):
         """Manejador para la rotación manual de la previsualización del vídeo."""
@@ -172,7 +187,13 @@ class MainWindow(QMainWindow):
         if self.original_pixmap is None: return
         transform = QTransform().rotate(self.current_rotation)
         rotated_pixmap = self.original_pixmap.transformed(transform)
-        self.video_display.set_thumbnail(rotated_pixmap.scaled(self.video_display.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        self.analysis_page.video_display.set_thumbnail(
+            rotated_pixmap.scaled(
+                self.analysis_page.video_display.size(),
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation,
+            )
+        )
 
     def _start_analysis(self):
         """Recoge los ajustes de la GUI e inicia el análisis en un hilo separado."""
@@ -180,15 +201,15 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Error", "No se ha seleccionado ningún vídeo."); return
         
         gui_settings = {
-            'output_dir': self.output_dir_edit.text().strip(),
-            'sample_rate': self.sample_rate_spin.value(),
-            'rotate': self.current_rotation,
-            'dark_mode': self.dark_mode_check.isChecked(),
-            'exercise': self.exercise_combo.currentText()
+            "output_dir": self.settings_page.output_dir_edit.text().strip(),
+            "sample_rate": self.settings_page.sample_rate_spin.value(),
+            "rotate": self.current_rotation,
+            "dark_mode": self.settings_page.dark_mode_check.isChecked(),
+            "exercise": self.settings_page.exercise_combo.currentText(),
         }
         
         self.worker = AnalysisWorker(self.video_path, gui_settings)
-        self.worker.progress.connect(self.progress_bar.setValue)
+        self.worker.progress.connect(self.analysis_page.progress_bar.setValue)
         self.worker.error.connect(self._on_processing_error)
         self.worker.finished.connect(self._on_processing_finished)
         
@@ -198,13 +219,16 @@ class MainWindow(QMainWindow):
     def _set_processing_state(self, is_processing: bool):
         """Habilita o deshabilita los controles de la GUI durante el análisis."""
         is_enabled = not is_processing
-        # Bloqueamos todas las pestañas que no sean la de Inicio para evitar cambios
-        self.tabs.setTabEnabled(2, is_enabled) # Ajustes
-        self.process_btn.setEnabled(is_enabled and self.video_path is not None)
+        # Bloqueamos la sección de Ajustes mientras se procesa
+        if len(self.nav_buttons) > 4:
+            self.nav_buttons[4].setEnabled(is_enabled)
+        self.analysis_page.process_btn.setEnabled(
+            is_enabled and self.video_path is not None
+        )
         if is_processing:
-            self.results_label.setText("Procesando... por favor, espere.")
+            self.analysis_page.results_label.setText("Procesando... por favor, espere.")
         else:
-            self.results_label.setText("Análisis finalizado.")
+            self.analysis_page.results_label.setText("Análisis finalizado.")
 
     def _on_processing_error(self, error_message: str):
         """Slot que se activa si el hilo de análisis emite un error."""
@@ -215,38 +239,64 @@ class MainWindow(QMainWindow):
         """Slot que se activa cuando el análisis termina con éxito."""
         self._set_processing_state(False)
         rep_count = results.get("repeticiones_contadas", "N/A")
-        self.results_label.setText(f"¡Análisis Completo! Repeticiones: {rep_count}")
+        self.analysis_page.results_label.setText(
+            f"¡Análisis Completo! Repeticiones: {rep_count}"
+        )
         
-        self.tabs.setTabEnabled(1, True)
-        self.results_panel.update_results(results)
-        self.tabs.setCurrentWidget(self.results_panel)
+        if len(self.nav_buttons) > 3:
+            self.nav_buttons[3].setEnabled(True)
+        self.progress_page.update_results(results)
+        self._navigate(3)
     
     def _load_settings(self):
         """Carga las preferencias del usuario guardadas en la sesión anterior."""
-        self.output_dir_edit.setText(self.q_settings.value("output_dir", os.path.join(self.project_root, 'data', 'processed')))
-        self.sample_rate_spin.setValue(self.q_settings.value("sample_rate", app_constants.DEFAULT_SAMPLE_RATE, type=int))
+        self.settings_page.output_dir_edit.setText(
+            self.q_settings.value(
+                "output_dir", os.path.join(self.project_root, "data", "processed")
+            )
+        )
+        self.settings_page.sample_rate_spin.setValue(
+            self.q_settings.value(
+                "sample_rate", app_constants.DEFAULT_SAMPLE_RATE, type=int
+            )
+        )
 
-        saved_exercise = self.q_settings.value("exercise", next(iter(settings.exercises)))
-        index = self.exercise_combo.findText(saved_exercise)
+        saved_exercise = self.q_settings.value(
+            "exercise", next(iter(settings.exercises))
+        )
+        index = self.settings_page.exercise_combo.findText(saved_exercise)
         if index >= 0:
-            self.exercise_combo.setCurrentIndex(index)
+            self.settings_page.exercise_combo.setCurrentIndex(index)
 
         geometry = self.q_settings.value("geometry", QByteArray())
         if isinstance(geometry, QByteArray) and not geometry.isEmpty():
             self.restoreGeometry(geometry)
 
-        # Siempre empezamos en 'Inicio'
-        self.dark_mode_check.setChecked(self.q_settings.value("dark_mode", app_constants.DEFAULT_DARK_MODE, type=bool))
-        
+        # Siempre empezamos en el dashboard
+        self.settings_page.dark_mode_check.setChecked(
+            self.q_settings.value(
+                "dark_mode", app_constants.DEFAULT_DARK_MODE, type=bool
+            )
+        )
+
         # Aplicamos el tema explícitamente al arrancar
-        self._apply_theme(self.dark_mode_check.isChecked())
+        self._apply_theme(self.settings_page.dark_mode_check.isChecked())
+        self._navigate(0)
 
     def closeEvent(self, event: QCloseEvent):
         """Guarda las preferencias del usuario al cerrar la aplicación."""
-        self.q_settings.setValue("output_dir", self.output_dir_edit.text())
-        self.q_settings.setValue("sample_rate", self.sample_rate_spin.value())
-        self.q_settings.setValue("exercise", self.exercise_combo.currentText())
-        self.q_settings.setValue("dark_mode", self.dark_mode_check.isChecked())
+        self.q_settings.setValue(
+            "output_dir", self.settings_page.output_dir_edit.text()
+        )
+        self.q_settings.setValue(
+            "sample_rate", self.settings_page.sample_rate_spin.value()
+        )
+        self.q_settings.setValue(
+            "exercise", self.settings_page.exercise_combo.currentText()
+        )
+        self.q_settings.setValue(
+            "dark_mode", self.settings_page.dark_mode_check.isChecked()
+        )
         self.q_settings.setValue("geometry", self.saveGeometry())
         super().closeEvent(event)
 
