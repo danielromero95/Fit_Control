@@ -1,6 +1,7 @@
 # src/constants.py
 
 from enum import Enum
+import os
 
 """
 Módulo para almacenar constantes fijas de la aplicación.
@@ -22,6 +23,9 @@ DEFAULT_GENERATE_VIDEO = True
 DEFAULT_DEBUG_MODE = False
 DEFAULT_DARK_MODE = True
 DEFAULT_ROTATE = 90
+
+# Ruta a la base de datos SQLite
+DB_PATH = os.path.join('data', 'gym_progress.db')
 
 class MetricType(str, Enum):
     """Define los tipos de métricas que nuestro analizador puede calcular."""
