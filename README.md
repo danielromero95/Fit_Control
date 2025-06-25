@@ -16,14 +16,6 @@ Luego activa el entorno:
 conda activate gym_env
 ```
 
-## Pruebas
-
-Las pruebas unitarias se ejecutan con `pytest` desde la raíz del proyecto:
-
-```bash
-pytest tests
-```
-
 ## Estructura
 
 ```text
@@ -32,8 +24,6 @@ pytest tests
 ├── docs/
 │   └── anteproyecto/
 │       └── Anteproyecto-Daniel_Romero_de_Miguel.pdf
-├── notebooks/
-│   └── inspect_real_angles.ipynb
 ├── src/
 │   ├── A_preprocessing/         # Extracción y preprocesado de vídeo
 │   │   ├── frame_extraction.py
@@ -62,12 +52,6 @@ pytest tests
 │   ├── config.py                # Carga y validación de config.yaml
 │   ├── constants.py             # Constantes generales de la aplicación
 │   └── pipeline.py              # Pipeline de análisis en memoria
-├── tests/
-│   ├── conftest.py
-│   ├── test_count_reps.py
-│   ├── test_metrics_output.py
-│   ├── test_pose_utils.py
-│   └── test_video_utils.py
 ├── themes/                     # Estilos QSS para la GUI
 │   ├── dark.qss
 │   └── light.qss
