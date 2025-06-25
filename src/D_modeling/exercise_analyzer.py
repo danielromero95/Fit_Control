@@ -40,43 +40,45 @@ def calculate_metrics(
         logger.error("MediaPipe no está disponible para calcular métricas.")
         return pd.DataFrame()
 
-    # Optimización: Pre-inicializamos un diccionario de listas para un ensamblado rápido del DataFrame
-    metric_columns = {metric.name: [] for metric in metric_definitions}
+    # Preparamos las estructuras de salida y convertimos los nombres de landmark
+    # a índices para evitar búsquedas costosas dentro del bucle principal
+    name_to_idx = {lm.name: lm.value for lm in PoseLandmark}
+
+    metric_rules = []  # (tipo, nombre_columna, indices)
+    for metric in metric_definitions:
+        if metric.type == MetricType.ANGLE:
+            idxs = [name_to_idx[n] for n in metric.point_names]
+            metric_rules.append((MetricType.ANGLE, metric.name, idxs))
+        elif metric.type == MetricType.HEIGHT:
+            idx = name_to_idx[metric.point_name]
+            metric_rules.append((MetricType.HEIGHT, metric.name, [idx]))
+
     base_columns = {'frame_idx': [], 'time_s': []}
+    metric_columns = {name: [] for _, name, _ in metric_rules}
     data = {**base_columns, **metric_columns}
 
     for frame_idx, result in enumerate(estimation_results):
         data['frame_idx'].append(frame_idx)
         data['time_s'].append(frame_idx / fps)
-        
+
         source_landmarks = result.world_landmarks or result.landmarks
-        
-        # Mapa de Nombre -> Datos de Landmark para este frame
-        landmarks_by_name = {}
         if source_landmarks:
-            # Pre-filtramos por visibilidad para mayor robustez
-            for i, lm in enumerate(source_landmarks):
-                if lm['visibility'] > 0.5:
-                    landmarks_by_name[PoseLandmark(i).name] = lm
-        
-        # Iteramos sobre las "recetas" de métricas de nuestra configuración
-        for metric_def in metric_definitions:
-            metric_name = metric_def.name
-            metric_value = None # Valor por defecto si algo falla
+            visible_landmarks = [lm if lm['visibility'] > 0.5 else None for lm in source_landmarks]
+        else:
+            visible_landmarks = []
+
+        for rule_type, metric_name, idxs in metric_rules:
+            metric_value = None
             try:
-                if metric_def.type == MetricType.ANGLE:
-                    p1_name, p2_name, p3_name = metric_def.point_names
-                    p1, p2, p3 = landmarks_by_name.get(p1_name), landmarks_by_name.get(p2_name), landmarks_by_name.get(p3_name)
-                    if all([p1, p2, p3]):
+                if all(i < len(visible_landmarks) and visible_landmarks[i] is not None for i in idxs):
+                    if rule_type == MetricType.ANGLE:
+                        p1, p2, p3 = (visible_landmarks[i] for i in idxs)
                         metric_value = calculate_angle_3d(p1, p2, p3)
-                
-                elif metric_def.type == MetricType.HEIGHT:
-                    point = landmarks_by_name.get(metric_def.point_name)
-                    if point:
-                        metric_value = point['y']
+                    else:  # HEIGHT
+                        metric_value = visible_landmarks[idxs[0]]['y']
             except Exception as e:
                 logger.error(f"Error calculando métrica '{metric_name}' en frame {frame_idx}: {e}")
-            
+
             data[metric_name].append(metric_value)
 
     return pd.DataFrame.from_dict(data)
