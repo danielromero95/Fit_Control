@@ -39,12 +39,17 @@ def calculate_distances(landmarks):
 
 def calculate_angular_velocity(angle_sequence, fps):
     """Calcula la velocidad angular de una secuencia de ángulos."""
-    if not angle_sequence or fps == 0: return [0.0] * len(angle_sequence)
-    velocities = [0.0]
+    if not angle_sequence or fps == 0:
+        return [0.0] * len(angle_sequence)
+
+    angles = np.asarray(angle_sequence, dtype=float)
     dt = 1.0 / fps
-    for i in range(1, len(angle_sequence)):
-        velocities.append(abs(angle_sequence[i] - angle_sequence[i - 1]) / dt)
-    return velocities
+
+    # Usamos np.diff para obtener las diferencias de forma vectorizada
+    diffs = np.abs(np.diff(angles))
+    velocities = np.concatenate(([0.0], diffs / dt))
+
+    return velocities.tolist()
 
 def calculate_symmetry(angle_left, angle_right):
     """Calcula la simetría entre dos ángulos."""
