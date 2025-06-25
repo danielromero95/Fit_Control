@@ -1,81 +1,75 @@
-# Gym Performance Analysis
+# Gym Performance Analyzer
 
-**Repositorio:** `gym-performance-analysis`  
-**Autor:** Daniel Romero  
-**Última actualización:** 4 de junio de 2025
+Proyecto para experimentar con el análisis automático de ejercicios de fuerza combinando vídeo y datos procedentes de wearables. Incluye módulos de preprocesado, estimación de pose, cálculo de métricas y una pequeña aplicación gráfica.
 
----
+## Requisitos
 
-## Descripción
+Se recomienda crear el entorno Conda definido en `environment.yml`:
 
-Este proyecto tiene como objetivo construir un sistema de análisis de rendimiento en gimnasio basado en visión por computador y datos de wearables. A partir de vídeos de ejercicios de fuerza (squat, bench press, deadlift) y datos de acelerómetro/pulso, el sistema debe:
+```bash
+conda env create -f environment.yml
+```
 
-1. Detectar el tipo de ejercicio.
-2. Contar repeticiones de manera automática.
-3. Calcular ángulos articulares clave (rodilla, cadera, hombro).
-4. Detectar posibles errores de técnica con ≥ 90 % de precisión.
-5. Sincronizar las señales de vídeo con datos de wearables.
-6. Ofrecer una demo web mínima para visualizar resultados.
+Luego activa el entorno:
 
-El flujo general contempla:
-- **Preprocesado de vídeo:** extracción de fotogramas, redimensionado, normalización, filtrado (Gauss, CLAHE), recorte de ROI.
-- **Estimación de pose:** MediaPipe Pose para extraer landmarks y calcular ángulos, velocidades angulares, simetría, etc.
-- **Procesamiento de wearables:** interpolación de acelerómetro y pulso para alinearlo con cada fotograma.
-- **Construcción de dataset:** combinación de un dataset público (Exercise-Recognition/Kaggle) y de grabaciones propias (≥ 1 000 vídeos) etiquetadas “correcto/incorrecto”.
-- **Modelado:**  
-  - Conteo de repeticiones mediante detección de picos en las series de ángulos.  
-  - Detección de fallos (baseline con Random Forest/SVM, versión avanzada con DL ligera en Keras/TensorFlow o PyTorch).  
-- **Validación:** cross‐validation k=5, métricas (precision, recall, F1); pruebas con usuarios (5–10 voluntarios), encuesta SUS.
-- **Despliegue:** contenedorización con Docker, API REST para recibir vídeo+CSV de sensores y devolver resultados en JSON, demo en Streamlit (o React).
-- **MLOps:** uso de MLflow para tracking de experimentos y GitHub Actions para CI/CD.
+```bash
+conda activate gym_env
+```
 
-Este repositorio contiene la estructura base para comenzar el desarrollo de cada uno de los módulos de forma modular y rastreable mediante Git.
+## Pruebas
 
----
+Las pruebas unitarias se ejecutan con `pytest` desde la raíz del proyecto:
 
-## Estructura de carpetas
+```bash
+pytest tests
+```
 
-```plaintext
-gym-performance-analysis/
-│
-├─ .venv/                       ← Entorno virtual (no se sube a remoto)
-│
-├─ data/                        ← Carpeta para datos
-│   ├─ raw/                     ← Vídeos originales (Exercise-Recognition + propios)
-│   │   └─ …                     ← (copiar aquí los clips en crudo)
-│   └─ processed/               ← Datos procesados (fotogramas, CSVs intermedios)
-│       └─ …
-│
-├─ notebooks/                   ← Jupyter Notebooks de exploración y prototipado
-│   ├─ 01_exploracion_dataset.ipynb
-│   └─ …
-│
-├─ src/                         ← Código fuente organizado en módulos
-│   ├─ preprocessing/           ← Extracción de fotogramas, redimensionado, filtros
-│   │   └─ frame_extraction.py
-│   │   └─ image_preprocessing.py
-│   │   └─ …                     ← (otros scripts de preprocesado)
-│   │
-│   ├─ pose_estimation/         ← Llamadas a MediaPipe, filtrado de keypoints, cálculo de ángulos
-│   │   └─ pose_utils.py
-│   │   └─ …                     ← (scripts de cálculo de vectores/ángulos)
-│   │
-│   ├─ sensor_preprocessing/     ← Lectura, alineación e interpolación de datos de wearables
-│   │   └─ sensor_utils.py
-│   │   └─ …                     ← (otros scripts de preprocesado de sensores)
-│   │
-│   ├─ modeling/                ← Definición y entrenamiento de modelos
-│   │   ├─ count_reps.py        ← Algoritmo de conteo de repeticiones (basado en picos)
-│   │   ├─ fault_detection.py   ← Baseline (Random Forest/SVM) para detección de fallos
-│   │   └─ dl_model.py          ← Red ligera (MLP/LSTM) para detección de fallos avanzados
-│   │
-│   └─ deployment/              ← Código de despliegue y API REST
-│       └─ api.py               ← Endpoint `/analyze` que procesa vídeo + CSV sensor
-│       └─ docker/              ← Dockerfile y scripts de construcción de imagen
-│
-├─ app_demo/                    ← Demo en Streamlit (o React) para cargar vídeo + CSV
-│   └─ demo_streamlit.py        ← Ejemplo mínimo de interface que muestra métricas
-│   └─ requirements_streamlit.txt
-│
-├─ docs/                        ← Documentación adicional
-│   ├─ anteproyec
+## Estructura
+
+```text
+├── config.yaml             # Configuración principal validada con Pydantic
+├── environment.yml         # Dependencias para reproducir el entorno
+├── docs/
+│   └── anteproyecto/
+│       └── Anteproyecto-Daniel_Romero_de_Miguel.pdf
+├── notebooks/
+│   └── inspect_real_angles.ipynb
+├── src/
+│   ├── A_preprocessing/         # Extracción y preprocesado de vídeo
+│   │   ├── frame_extraction.py
+│   │   └── video_metadata.py
+│   ├── B_pose_estimation/       # Estimadores y utilidades de pose
+│   │   ├── estimators.py
+│   │   ├── metrics.py
+│   │   └── processing.py
+│   ├── D_modeling/              # Cálculo de métricas y conteo de repeticiones
+│   │   ├── exercise_analyzer.py
+│   │   ├── fault_detection.py
+│   │   └── math_utils.py
+│   ├── F_visualization/         # Renderizado de vídeo y utilidades de dibujo
+│   │   ├── drawing_utils.py
+│   │   └── video_renderer.py
+│   ├── gui/                     # Aplicación PyQt
+│   │   ├── main.py
+│   │   ├── main_window.py
+│   │   ├── worker.py
+│   │   └── widgets/
+│   │       ├── plot_widget.py
+│   │       ├── results_panel.py
+│   │       ├── video_display.py
+│   │       └── video_player.py
+│   ├── app.py                   # Demo en Streamlit
+│   ├── config.py                # Carga y validación de config.yaml
+│   ├── constants.py             # Constantes generales de la aplicación
+│   └── pipeline.py              # Pipeline de análisis en memoria
+├── tests/
+│   ├── conftest.py
+│   ├── test_count_reps.py
+│   ├── test_metrics_output.py
+│   ├── test_pose_utils.py
+│   └── test_video_utils.py
+├── themes/                     # Estilos QSS para la GUI
+│   ├── dark.qss
+│   └── light.qss
+└── README.md
+```
