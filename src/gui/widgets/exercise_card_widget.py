@@ -11,10 +11,10 @@ class ExerciseCardWidget(QWidget):
 
     clicked = pyqtSignal(int)
 
-    def __init__(self, ex_id: int, name: str, image_path: str | None, equipment: str | None = None, parent: QWidget | None = None) -> None:
+    def __init__(self, ex_id: int, name: str, icon_path: str | None, equipment: str | None = None, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.exercise_id = ex_id
-        self.image_path = image_path or ""
+        self.image_path = icon_path or ""
 
         self.setObjectName("ExerciseCardWidget")
         self.setFixedSize(150, 180)
