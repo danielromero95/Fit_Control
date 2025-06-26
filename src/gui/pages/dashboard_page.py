@@ -3,12 +3,11 @@ from __future__ import annotations
 from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
-    QGroupBox,
-    QTextEdit,
 )
 from PyQt5.QtCore import QDate
 
 from src.gui.widgets.custom_calendar_widget import CustomCalendarWidget
+from src.gui.widgets.daily_plan_card import DailyPlanCard
 
 
 class DashboardPage(QWidget):
@@ -22,15 +21,20 @@ class DashboardPage(QWidget):
         self.calendar = CustomCalendarWidget()
         layout.addWidget(self.calendar)
 
-        self.plan_group = QGroupBox("Plan para Hoy")
-        plan_layout = QVBoxLayout(self.plan_group)
-        self.plan_text = QTextEdit(readOnly=True)
-        self.plan_text.setPlaceholderText("No hay entrenamiento planificado para hoy.")
-        plan_layout.addWidget(self.plan_text)
-        layout.addWidget(self.plan_group)
+        self.daily_plan_card = DailyPlanCard()
+        layout.addWidget(self.daily_plan_card)
+
+        self.calendar.date_selected.connect(self._on_date_selected)
+
+        self._plan_data = self._parse_example_plan()
+        self._on_date_selected(QDate.currentDate())
 
     def refresh_dashboard(self) -> None:
-        """Actualiza el plan del día utilizando un plan de ejemplo."""
+        """Refresca la tarjeta del plan para la fecha seleccionada."""
+        self._on_date_selected(QDate.currentDate())
+
+    def _parse_example_plan(self) -> dict[str, list[tuple[str, str]]]:
+        """Parsea un plan de ejemplo simple para cada día."""
 
         plan_md = """
 ### Lunes
@@ -59,6 +63,28 @@ Descanso
 Descanso
 """
 
+        plan: dict[str, list[tuple[str, str]]] = {}
+        current_day: str | None = None
+        for line in plan_md.splitlines():
+            if line.startswith("### "):
+                current_day = line[4:].strip()
+                plan[current_day] = []
+                continue
+            if current_day is None or not line.strip():
+                continue
+            if line.strip().lower().startswith("descanso"):
+                plan[current_day] = []
+                continue
+            if line.startswith("- "):
+                text = line[2:].strip()
+                parts = text.rsplit(" ", 1)
+                if len(parts) == 2:
+                    plan[current_day].append((parts[0], parts[1]))
+                else:
+                    plan[current_day].append((text, ""))
+        return plan
+
+    def _on_date_selected(self, date: QDate) -> None:
         day_names = {
             1: "Lunes",
             2: "Martes",
@@ -68,22 +94,6 @@ Descanso
             6: "Sábado",
             7: "Domingo",
         }
-        today = QDate.currentDate()
-        day_es = day_names.get(today.dayOfWeek(), "")
-
-        start_token = f"### {day_es}"
-        lines = plan_md.splitlines()
-        collecting = False
-        extracted: list[str] = []
-        for line in lines:
-            if collecting:
-                if line.startswith("### "):
-                    break
-                extracted.append(line)
-            elif line.startswith(start_token):
-                collecting = True
-        plan_text = "\n".join(extracted).strip()
-        if plan_text:
-            self.plan_text.setMarkdown(plan_text)
-        else:
-            self.plan_text.setMarkdown("Descanso. No hay entrenamiento para hoy.")
+        day_es = day_names.get(date.dayOfWeek(), "")
+        exercises = self._plan_data.get(day_es, [])
+        self.daily_plan_card.update_plan(exercises)

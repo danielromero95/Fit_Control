@@ -33,6 +33,7 @@ from .pages import (
     PlansPage,
     ProgressPage,
     SettingsPage,
+    ContactPage,
 )
 
 logger = logging.getLogger(__name__)
@@ -99,12 +100,14 @@ class MainWindow(QMainWindow):
         self.results_panel = self.progress_page.results_panel
         self.plans_page = PlansPage(self.translator)
         self.settings_page = SettingsPage(settings.exercises, self._apply_theme)
+        self.contact_page = ContactPage()
 
         self.stack.addWidget(self.dashboard_page)
         self.stack.addWidget(self.exercises_page)
         self.stack.addWidget(self.plans_page)
         self.stack.addWidget(self.progress_page)
         self.stack.addWidget(self.settings_page)
+        self.stack.addWidget(self.contact_page)
         self.stack.addWidget(self.exercise_detail_page)
 
         # Botones de navegación
@@ -121,6 +124,10 @@ class MainWindow(QMainWindow):
             self.nav_buttons.append(btn)
 
         self.nav_layout.addStretch(1)
+
+        contact_index = self.stack.indexOf(self.contact_page)
+        contact_btn = self._create_nav_button("fa5s.info-circle", "Contacto", contact_index, "Información de contacto")
+        self.nav_buttons.append(contact_btn)
 
         main_layout.addWidget(nav_widget)
         main_layout.addWidget(self.stack, 1)
@@ -146,6 +153,7 @@ class MainWindow(QMainWindow):
         btn.setIcon(qta.icon(icon_name))
         btn.setCheckable(True)
         btn.setToolTip(tooltip)
+        btn.setStyleSheet("text-align: left; padding-left: 10px;")
         self.nav_group.addButton(btn, page_index)
         btn.clicked.connect(lambda _: self._navigate(page_index))
         self.nav_layout.addWidget(btn)

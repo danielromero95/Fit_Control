@@ -133,3 +133,37 @@ DayCellWidget[isToday="true"] QLabel {
     color: white;
     border-radius: 13px;
 }
+
+DayCellWidget[isSelected="true"] QLabel {
+    border: 2px solid #3182CE;
+    border-radius: 13px;
+}
+
+/* Tarjeta del plan diario */
+DailyPlanCard {
+    background-color: #FFFFFF;
+    border: 1px solid #CBD5E0;
+    border-radius: 8px;
+    padding: 10px;
+}
+
+QLabel#planTitle {
+    font-size: 12pt;
+    font-weight: bold;
+    color: #2D3748;
+}
+
+QLabel#planSubtitle {
+    font-size: 9pt;
+    color: #718096;
+}
+
+ExerciseRowWidget QLabel#exerciseName {
+    font-size: 10pt;
+    color: #2D3748;
+}
+
+ExerciseRowWidget QLabel#exerciseDetail {
+    font-size: 9pt;
+    color: #4A5568;
+}
