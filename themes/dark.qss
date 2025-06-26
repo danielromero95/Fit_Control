@@ -55,6 +55,11 @@ QListWidget::item {
 QListWidget::item:hover {
   background-color: #3c3c3c;
 }
+/* Panel de navegación lateral */
+QWidget#navPanel {
+    background-color: #1A202C;
+    border-right: 1px solid #4A5568;
+}
 /* Estilo base para todas las tarjetas del dashboard */
 QGroupBox#DashboardCard {
     background-color: #2D3748; /* Un color de fondo oscuro para las tarjetas */
@@ -87,6 +92,7 @@ QLabel#kpiSubtitle {
 /* Contenedor principal del calendario personalizado */
 CustomCalendarWidget {
     background-color: transparent;
+    border: none;
 }
 
 /* Cabecera de navegación (Mes y Año) */
@@ -109,11 +115,16 @@ QPushButton#calendarNavButton {
 DayCellWidget {
     background-color: transparent;
     border: none;
+    min-height: 40px;
 }
 
 DayCellWidget QLabel {
     font-size: 10pt;
     font-weight: bold;
+    min-width: 26px;
+    max-width: 26px;
+    min-height: 26px;
+    max-height: 26px;
     color: #CBD5E0;
 }
 
