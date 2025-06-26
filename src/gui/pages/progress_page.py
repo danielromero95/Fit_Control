@@ -1,4 +1,5 @@
 from typing import Dict, Any, List
+from io import StringIO
 from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -116,7 +117,7 @@ class ProgressPage(QWidget):
         df = None
         if metrics_json:
             try:
-                df = pd.read_json(metrics_json, orient="split")
+                df = pd.read_json(StringIO(metrics_json), orient="split")
             except ValueError as e:
                 logging.error("Error parsing JSON for analysis %s: %s", analysis_id, e)
                 self.results_panel.clear_results()

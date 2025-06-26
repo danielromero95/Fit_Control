@@ -161,7 +161,6 @@ DayCellWidget[isToday="true"] QLabel {
     border: 2px solid #CBD5E0;
     border-radius: 13px;
     background-color: transparent;
-    color: #CBD5E0;
 }
 
 DayCellWidget[isSelected="true"] QLabel {
