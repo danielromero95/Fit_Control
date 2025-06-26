@@ -17,6 +17,7 @@ from src.config import settings as global_settings
 from src.A_preprocessing.frame_extraction import extract_and_preprocess_frames
 from src.B_pose_estimation.estimators import BaseEstimator, EstimationResult
 from src.D_modeling.exercise_analyzer import calculate_metrics, count_repetitions, detect_faults
+from scipy.signal import find_peaks
 from src.F_visualization.drawing_utils import draw_landmarks_from_dicts
 
 logger = logging.getLogger(__name__)
@@ -130,6 +131,23 @@ def run_full_pipeline_in_memory(
             metric_definitions=exercise_params.metric_definitions
         )
 
+        key_metric_avg = None
+        metric_col = exercise_params.rep_counter_metric
+        if not df_metrics.empty and metric_col in df_metrics.columns:
+            try:
+                metric_series = df_metrics[metric_col].ffill().bfill()
+                inverted = -metric_series.to_numpy()
+                valleys, _ = find_peaks(
+                    inverted,
+                    height=-exercise_params.low_thresh,
+                    prominence=exercise_params.peak_prominence,
+                    distance=exercise_params.peak_distance,
+                )
+                if len(valleys) > 0:
+                    key_metric_avg = float(metric_series.iloc[valleys].mean())
+            except Exception as e:
+                logger.error(f"Error calculando key_metric_avg: {e}")
+
         n_reps = count_repetitions(df_metrics, params=exercise_params)
         
         faults_detected = detect_faults(df_metrics, {"reps": n_reps})
@@ -180,6 +198,7 @@ def run_full_pipeline_in_memory(
         return {
             "repeticiones_contadas": n_reps,
             "dataframe_metricas": df_metrics,
+            "key_metric_avg": key_metric_avg,
             "debug_video_path": debug_video_path,
             "fallos_detectados": faults_detected,
             "fps": fps, # Añadimos fps a los resultados para que la GUI lo use

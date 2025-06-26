@@ -22,6 +22,7 @@ def init_db() -> None:
                 timestamp TEXT,
                 exercise_name TEXT,
                 rep_count INTEGER,
+                key_metric_avg REAL,
                 video_path TEXT,
                 metrics_df_json TEXT
             )
@@ -34,6 +35,17 @@ def get_all_analysis_results() -> list:
     conn = get_db_connection()
     cursor = conn.execute(
         "SELECT * FROM analysis_results ORDER BY timestamp DESC"
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+def get_analysis_results_by_exercise(exercise_name: str) -> list:
+    """Devuelve los análisis de un ejercicio ordenados por fecha ascendente."""
+    conn = get_db_connection()
+    cursor = conn.execute(
+        "SELECT * FROM analysis_results WHERE exercise_name = ? ORDER BY timestamp ASC",
+        (exercise_name,),
     )
     rows = cursor.fetchall()
     conn.close()
@@ -69,6 +81,7 @@ def save_analysis_results(results: Dict[str, Any], gui_settings: Dict[str, Any])
     try:
         conn = get_db_connection()
         rep_count = results.get("repeticiones_contadas")
+        key_metric_avg = results.get("key_metric_avg")
         exercise_name = results.get("exercise") or gui_settings.get("exercise")
         video_path = results.get("debug_video_path")
         df = results.get("dataframe_metricas")
@@ -78,10 +91,10 @@ def save_analysis_results(results: Dict[str, Any], gui_settings: Dict[str, Any])
         with conn:
             cursor = conn.execute(
                 """
-                INSERT INTO analysis_results(timestamp, exercise_name, rep_count, video_path, metrics_df_json)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO analysis_results(timestamp, exercise_name, rep_count, key_metric_avg, video_path, metrics_df_json)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                (timestamp, exercise_name, rep_count, video_path, df_json),
+                (timestamp, exercise_name, rep_count, key_metric_avg, video_path, df_json),
             )
             new_id = cursor.lastrowid
         logging.info(f"Resultados guardados en la base de datos con el ID: {new_id}")
