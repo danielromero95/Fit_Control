@@ -113,6 +113,7 @@ class ExercisesPage(QWidget):
                 icon_path_absolute = ""
                 if icon_path_relative:
                     icon_path_absolute = os.path.join(self.project_root, icon_path_relative)
+                    print(f"DEBUG: Intentando cargar icono desde: {icon_path_absolute}")
 
                 card = ExerciseCardWidget(
                     int(ex["id"]),

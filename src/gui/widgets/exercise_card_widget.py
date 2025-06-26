@@ -45,6 +45,8 @@ class ExerciseCardWidget(QWidget):
 
     # --------------------------------------------------
     def _load_image(self) -> None:
+        print(f"DEBUG: La tarjeta '{self.name_label.text()}' recibió la ruta: {self.image_path}")
+        print(f"DEBUG: ¿Existe el archivo en esa ruta? -> {os.path.exists(self.image_path)}")
         pix = None
         if self.image_path and os.path.exists(self.image_path):
             tmp = QPixmap(self.image_path)

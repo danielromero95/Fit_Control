@@ -53,6 +53,7 @@ class MainWindow(QMainWindow):
         """
         super().__init__(parent)
         self.project_root = project_root
+        print(f"DEBUG: Ruta Raíz del Proyecto detectada: {self.project_root}")
         self.translator = translator
         self.video_path: Optional[str] = None
         self.gui_settings: Dict[str, Any] = {}
