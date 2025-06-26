@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import (
     QCheckBox,
     QProgressBar,
     QGraphicsOpacityEffect,
+    QPushButton,
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 from typing import Iterable
