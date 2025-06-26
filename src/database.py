@@ -235,29 +235,6 @@ def get_latest_analysis() -> Dict[str, Any] | None:
     return dict(row) if row else None
 
 
-def get_total_analysis_count() -> int:
-    """Devuelve el número total de análisis almacenados."""
-    conn = get_db_connection()
-    cursor = conn.execute("SELECT COUNT(id) FROM analysis_results")
-    count = cursor.fetchone()[0]
-    conn.close()
-    try:
-        return int(count)
-    except (TypeError, ValueError):  # pragma: no cover - fallback
-        return 0
-
-
-def get_recent_reps_by_exercise(exercise_name: str, limit: int = 10) -> list:
-    """Obtiene los últimos registros de un ejercicio para el gráfico principal."""
-    conn = get_db_connection()
-    cursor = conn.execute(
-        "SELECT timestamp, rep_count FROM analysis_results WHERE exercise_name = ? ORDER BY timestamp DESC LIMIT ?",
-        (exercise_name, limit),
-    )
-    rows = cursor.fetchall()
-    conn.close()
-    dict_rows = [dict(row) for row in rows]
-    return list(reversed(dict_rows))
 
 
 def populate_initial_exercises() -> None:
