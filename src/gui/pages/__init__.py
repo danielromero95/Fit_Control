@@ -5,6 +5,7 @@ from .progress_page import ProgressPage
 from .settings_page import SettingsPage
 from .exercises_page import ExercisesPage
 from .exercise_detail_page import ExerciseDetailPage
+from .contact_page import ContactPage
 
 __all__ = [
     "DashboardPage",
@@ -14,5 +15,6 @@ __all__ = [
     "SettingsPage",
     "ExercisesPage",
     "ExerciseDetailPage",
+    "ContactPage",
 ]
 
