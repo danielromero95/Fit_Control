@@ -61,7 +61,7 @@ def run_app():
 
     app = QApplication(sys.argv)
     # No forzamos aquí el tema: _apply_theme del MainWindow leerá el checkbox
-    window = MainWindow(project_root=PROJECT_ROOT)
+    window = MainWindow(project_root=PROJECT_ROOT, translator=translator)
     window.show()
     sys.exit(app.exec_())
 

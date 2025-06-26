@@ -21,14 +21,17 @@ from datetime import datetime
 
 from ...services.plan_generator import PlanGeneratorWorker
 from ... import database
-from ..main import translator
+
+# The translator instance is provided by the MainWindow when constructing
+# this page to avoid circular imports with src.gui.main
 
 
 class PlansPage(QWidget):
     """Página para generar planes de entrenamiento personalizados."""
 
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(self, translator, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self.translator = translator
 
         main_layout = QHBoxLayout(self)
 
@@ -47,7 +50,7 @@ class PlansPage(QWidget):
                 "Resistencia",
             ]
         )
-        form_layout.addRow(translator.tr("main_goal"), self.objetivo_cb)
+        form_layout.addRow(self.translator.tr("main_goal"), self.objetivo_cb)
 
         self.dias_sb = QSpinBox()
         self.dias_sb.setRange(1, 7)
@@ -91,17 +94,17 @@ class PlansPage(QWidget):
 
         right_layout.addWidget(self.results_stack, 1)
 
-        self.save_plan_btn = QPushButton(translator.tr("save_plan"))
+        self.save_plan_btn = QPushButton(self.translator.tr("save_plan"))
         self.save_plan_btn.setEnabled(False)
         self.save_plan_btn.setToolTip("Guardar el plan mostrado en tu historial")
         right_layout.addWidget(self.save_plan_btn)
 
         self.set_active_btn = QPushButton("Establecer como Plan Activo")
         self.set_active_btn.setEnabled(False)
-        self.set_active_btn.setToolTip(translator.tr("active_plan_tooltip"))
+        self.set_active_btn.setToolTip(self.translator.tr("active_plan_tooltip"))
         right_layout.addWidget(self.set_active_btn)
 
-        self.generate_btn = QPushButton(translator.tr("generate_plan"))
+        self.generate_btn = QPushButton(self.translator.tr("generate_plan"))
         self.generate_btn.setToolTip("Generar un nuevo plan de entrenamiento con IA")
         self.generate_btn.clicked.connect(self.on_generate_plan_clicked)
         left_layout.addWidget(self.generate_btn)
