@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from typing import Dict, Any
+from typing import Dict, Any, List
 from datetime import datetime
 import logging
 
@@ -30,6 +30,31 @@ def init_db() -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS exercises(
+                id INTEGER PRIMARY KEY,
+                name TEXT UNIQUE,
+                muscle_group TEXT,
+                description_md TEXT,
+                image_url TEXT,
+                equipment TEXT
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS manual_logs(
+                id INTEGER PRIMARY KEY,
+                timestamp TEXT,
+                exercise_id INTEGER,
+                reps INTEGER,
+                weight REAL,
+                notes TEXT,
+                FOREIGN KEY(exercise_id) REFERENCES exercises(id)
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS training_plans(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 title TEXT,
@@ -47,6 +72,7 @@ def init_db() -> None:
             """
         )
     conn.close()
+    populate_initial_exercises()
 
 def get_all_analysis_results() -> list:
     """Devuelve todos los análisis guardados ordenados por fecha descendente."""
@@ -232,3 +258,121 @@ def get_recent_reps_by_exercise(exercise_name: str, limit: int = 10) -> list:
     conn.close()
     dict_rows = [dict(row) for row in rows]
     return list(reversed(dict_rows))
+
+
+def populate_initial_exercises() -> None:
+    """Inserta ejercicios de ejemplo si la tabla está vacía."""
+    conn = get_db_connection()
+    cursor = conn.execute("SELECT COUNT(id) FROM exercises")
+    count = cursor.fetchone()[0]
+    if int(count) > 0:
+        conn.close()
+        return
+
+    sample_exercises = [
+        {
+            "name": "Lat Pulldown",
+            "muscle_group": "Espalda",
+            "description_md": "Ejercicio para dorsales con agarre en polea.",
+            "image_url": "assets/muscles/lat_pulldown.png",
+            "equipment": "Máquina",
+        },
+        {
+            "name": "Bench Press",
+            "muscle_group": "Pecho",
+            "description_md": "Press de banca convencional.",
+            "image_url": "assets/muscles/bench_press.png",
+            "equipment": "Barra",
+        },
+        {
+            "name": "Squat",
+            "muscle_group": "Pierna",
+            "description_md": "Sentadilla completa con barra.",
+            "image_url": "assets/muscles/squat.png",
+            "equipment": "Barra",
+        },
+    ]
+
+    with conn:
+        for ex in sample_exercises:
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO exercises(name, muscle_group, description_md, image_url, equipment)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    ex["name"],
+                    ex["muscle_group"],
+                    ex["description_md"],
+                    ex["image_url"],
+                    ex["equipment"],
+                ),
+            )
+    conn.close()
+
+
+def get_exercises_by_group(muscle_group: str) -> List[Dict[str, Any]]:
+    """Devuelve ejercicios filtrados por grupo muscular."""
+    conn = get_db_connection()
+    if muscle_group == "Todos":
+        cursor = conn.execute("SELECT * FROM exercises ORDER BY name")
+    else:
+        cursor = conn.execute(
+            "SELECT * FROM exercises WHERE muscle_group = ? ORDER BY name",
+            (muscle_group,),
+        )
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+
+def get_exercise_by_id(exercise_id: int) -> Dict[str, Any] | None:
+    """Obtiene un ejercicio por su ID."""
+    conn = get_db_connection()
+    cursor = conn.execute("SELECT * FROM exercises WHERE id = ?", (exercise_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_all_muscle_groups() -> List[str]:
+    """Devuelve la lista de grupos musculares disponibles."""
+    conn = get_db_connection()
+    cursor = conn.execute("SELECT DISTINCT muscle_group FROM exercises ORDER BY muscle_group")
+    groups = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    return groups
+
+
+def add_manual_log(
+    timestamp: str,
+    exercise_id: int,
+    reps: int,
+    weight: float,
+    notes: str | None = None,
+) -> int:
+    """Añade un registro manual de entrenamiento."""
+    conn = get_db_connection()
+    with conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO manual_logs(timestamp, exercise_id, reps, weight, notes)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (timestamp, exercise_id, reps, weight, notes),
+        )
+        new_id = cursor.lastrowid
+    conn.close()
+    return new_id
+
+
+def get_logs_for_exercise(exercise_id: int) -> List[Dict[str, Any]]:
+    """Devuelve los registros manuales para un ejercicio."""
+    conn = get_db_connection()
+    cursor = conn.execute(
+        "SELECT * FROM manual_logs WHERE exercise_id = ? ORDER BY timestamp ASC",
+        (exercise_id,),
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
