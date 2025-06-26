@@ -48,6 +48,11 @@ QLineEdit, QSpinBox, QComboBox {
 QCheckBox {
   spacing: 6px;
 }
+QCheckBox::indicator {
+    width: 14px;
+    height: 14px;
+    border-radius: 7px;
+}
 QListWidget::item {
   padding: 5px;
   border-radius: 3px;
@@ -164,18 +169,28 @@ DailyPlanCard {
 QLabel#planTitle {
     font-size: 12pt;
     font-weight: bold;
-    color: #1A202C;
-    background-color: #F6AD55;
-    padding: 2px 6px;
-    border-radius: 4px;
+    color: #F6AD55;
 }
 
 QLabel#planSubtitle {
     font-size: 9pt;
     color: #1A202C;
-    background-color: #F6AD55;
     padding: 1px 4px;
-    border-radius: 4px;
+}
+
+QProgressBar#dayProgress {
+    background-color: #4A5568;
+    border: none;
+    border-radius: 3px;
+}
+
+QProgressBar#dayProgress::chunk {
+    background-color: #48BB78;
+    border-radius: 3px;
+}
+
+ExerciseRowWidget QCheckBox {
+    spacing: 4px;
 }
 
 ExerciseRowWidget QLabel#exerciseName {

@@ -88,6 +88,7 @@ class MainWindow(QMainWindow):
 
         # Páginas
         self.dashboard_page = DashboardPage()
+        self.dashboard_page.exercise_selected.connect(self._on_exercise_by_name)
         self.exercises_page = ExercisesPage()
         self.exercises_page.exercise_selected.connect(self._on_exercise_selected)
         self.exercise_detail_page = ExerciseDetailPage(
@@ -163,6 +164,11 @@ class MainWindow(QMainWindow):
         """Carga el detalle del ejercicio seleccionado y navega a la vista."""
         self.exercise_detail_page.load_exercise(exercise_id)
         self._navigate(self.stack.indexOf(self.exercise_detail_page))
+
+    def _on_exercise_by_name(self, name: str) -> None:
+        row = database.get_exercise_by_name(name)
+        if row:
+            self._on_exercise_selected(int(row["id"]))
 
     
 
