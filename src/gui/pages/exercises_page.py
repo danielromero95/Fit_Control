@@ -1,3 +1,4 @@
+import os
 from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -21,8 +22,9 @@ class ExercisesPage(QWidget):
 
     exercise_selected = pyqtSignal(int)
 
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(self, project_root: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self.project_root = project_root
 
         layout = QVBoxLayout(self)
 
@@ -107,8 +109,16 @@ class ExercisesPage(QWidget):
 
             exercises = database.get_exercises_by_group(grp)
             for ex in exercises:
+                icon_path_relative = ex.get("icon_path", "")
+                icon_path_absolute = ""
+                if icon_path_relative:
+                    icon_path_absolute = os.path.join(self.project_root, icon_path_relative)
+
                 card = ExerciseCardWidget(
-                    int(ex["id"]), ex["name"], ex.get("icon_path"), ex.get("equipment")
+                    int(ex["id"]),
+                    ex["name"],
+                    icon_path_absolute,
+                    ex.get("equipment"),
                 )
                 card.clicked.connect(self.exercise_selected)
                 h_layout.addWidget(card)
