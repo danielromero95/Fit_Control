@@ -151,6 +151,7 @@ class MainWindow(QMainWindow):
 
     def _create_nav_button(self, icon_name: str, text: str, page_index: int, tooltip: str) -> QPushButton:
         btn = QPushButton(text)
+        btn.setObjectName("navButton")
         btn.setIcon(qta.icon(icon_name))
         btn.setCheckable(True)
         btn.setToolTip(tooltip)

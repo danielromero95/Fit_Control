@@ -65,6 +65,25 @@ QWidget#navPanel {
     background-color: #1A202C;
     border-right: 1px solid #4A5568;
 }
+
+QPushButton#navButton {
+    background-color: transparent;
+    color: #ddd;
+    border: none;
+    padding: 6px 12px;
+    text-align: left;
+}
+
+QPushButton#navButton:checked {
+    background-color: #2B6CB0;
+    color: #fff;
+    font-weight: bold;
+    border-left: 4px solid #3182CE;
+}
+
+QPushButton#navButton:hover {
+    background-color: #2D3748;
+}
 /* Estilo base para todas las tarjetas del dashboard */
 QGroupBox#DashboardCard {
     background-color: #2D3748; /* Un color de fondo oscuro para las tarjetas */
