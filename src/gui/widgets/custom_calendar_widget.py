@@ -39,6 +39,16 @@ class CustomCalendarWidget(QWidget):
         header_layout.addWidget(self.next_button)
         main_layout.addLayout(header_layout)
 
+        # ----- Encabezado de días de la semana -----
+        week_layout = QGridLayout()
+        week_layout.setSpacing(2)
+        day_names = ["L", "M", "X", "J", "V", "S", "D"]
+        for i, name in enumerate(day_names):
+            lbl = QLabel(name)
+            lbl.setAlignment(Qt.AlignCenter)
+            week_layout.addWidget(lbl, 0, i)
+        main_layout.addLayout(week_layout)
+
         # ----- Grid de días -----
         self.grid_layout = QGridLayout()
         self.grid_layout.setSpacing(2)

@@ -75,6 +75,7 @@ class MainWindow(QMainWindow):
         main_layout = QHBoxLayout(container)
 
         nav_widget = QWidget()
+        nav_widget.setObjectName("navPanel")
         self.nav_layout = QVBoxLayout(nav_widget)
         self.nav_layout.setContentsMargins(0, 0, 0, 0)
         self.nav_layout.setSpacing(10)
@@ -109,7 +110,7 @@ class MainWindow(QMainWindow):
         # Botones de navegación
         self.nav_buttons = []
         buttons = [
-            ("fa5s.tachometer-alt", "Dashboard", "Ir a la sección de Dashboard"),
+            ("fa5s.tachometer-alt", "Inicio", "Ir a la sección de Dashboard"),
             ("fa5s.dumbbell", "Ejercicios", "Explorar biblioteca de ejercicios"),
             ("fa5s.calendar-alt", "Planes", "Gestionar tus planes de entrenamiento"),
             ("fa5s.chart-line", "Progreso", "Consultar historial de análisis"),
