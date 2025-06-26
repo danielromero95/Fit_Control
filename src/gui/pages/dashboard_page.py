@@ -3,12 +3,12 @@ from __future__ import annotations
 from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
-    QCalendarWidget,
     QGroupBox,
     QTextEdit,
 )
 from PyQt5.QtCore import QDate
-from PyQt5.QtGui import QTextCharFormat, QColor
+
+from src.gui.widgets.custom_calendar_widget import CustomCalendarWidget
 
 
 class DashboardPage(QWidget):
@@ -19,25 +19,15 @@ class DashboardPage(QWidget):
 
         layout = QVBoxLayout(self)
 
-        self.calendar = QCalendarWidget()
-        self._highlight_today()
+        self.calendar = CustomCalendarWidget()
         layout.addWidget(self.calendar)
 
         self.plan_group = QGroupBox("Plan para Hoy")
         plan_layout = QVBoxLayout(self.plan_group)
         self.plan_text = QTextEdit(readOnly=True)
-        self.plan_text.setPlaceholderText(
-            "No hay entrenamiento planificado para hoy."
-        )
+        self.plan_text.setPlaceholderText("No hay entrenamiento planificado para hoy.")
         plan_layout.addWidget(self.plan_text)
         layout.addWidget(self.plan_group)
-
-    def _highlight_today(self) -> None:
-        today = QDate.currentDate()
-        fmt = QTextCharFormat()
-        fmt.setBackground(QColor("#3366ff"))
-        fmt.setForeground(QColor("white"))
-        self.calendar.setDateTextFormat(today, fmt)
 
     def refresh_dashboard(self) -> None:
         """Actualiza el plan del día utilizando un plan de ejemplo."""
@@ -97,4 +87,3 @@ Descanso
             self.plan_text.setMarkdown(plan_text)
         else:
             self.plan_text.setMarkdown("Descanso. No hay entrenamiento para hoy.")
-
