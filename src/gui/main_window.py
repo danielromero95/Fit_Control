@@ -41,15 +41,17 @@ class MainWindow(QMainWindow):
     Ventana principal de la aplicación. Orquesta todos los widgets y la interacción
     con el pipeline de análisis. Gestiona el estado de la GUI y las preferencias del usuario.
     """
-    def __init__(self, project_root: str, parent=None):
+    def __init__(self, project_root: str, translator, parent=None):
         """
         Constructor de la ventana principal.
-        
+
         Args:
             project_root (str): Ruta raíz del proyecto para localizar recursos como hojas de estilo.
+            translator: Instancia de ``Translator`` para localizar la interfaz.
         """
         super().__init__(parent)
         self.project_root = project_root
+        self.translator = translator
         self.video_path: Optional[str] = None
         self.gui_settings: Dict[str, Any] = {}
         
@@ -91,7 +93,7 @@ class MainWindow(QMainWindow):
         )
         self.progress_page = ProgressPage()
         self.results_panel = self.progress_page.results_panel
-        self.plans_page = PlansPage()
+        self.plans_page = PlansPage(self.translator)
         self.settings_page = SettingsPage(settings.exercises, self._apply_theme)
 
         self.stack.addWidget(self.dashboard_page)
