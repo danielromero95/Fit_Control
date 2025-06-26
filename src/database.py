@@ -312,6 +312,15 @@ def get_exercise_by_id(exercise_id: int) -> Dict[str, Any] | None:
     return dict(row) if row else None
 
 
+def get_exercise_by_name(name: str) -> Dict[str, Any] | None:
+    """Obtiene un ejercicio por su nombre."""
+    conn = get_db_connection()
+    cursor = conn.execute("SELECT * FROM exercises WHERE name = ?", (name,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
 def get_all_muscle_groups() -> List[str]:
     """Devuelve la lista de grupos musculares disponibles."""
     conn = get_db_connection()

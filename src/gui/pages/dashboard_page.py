@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
 )
-from PyQt5.QtCore import QDate
+from PyQt5.QtCore import QDate, pyqtSignal
 
 from src.gui.widgets.custom_calendar_widget import CustomCalendarWidget
 from src.gui.widgets.daily_plan_card import DailyPlanCard
@@ -12,6 +12,8 @@ from src.gui.widgets.daily_plan_card import DailyPlanCard
 
 class DashboardPage(QWidget):
     """Página principal con un calendario y el plan de entrenamiento del día."""
+
+    exercise_selected = pyqtSignal(str)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -24,6 +26,7 @@ class DashboardPage(QWidget):
 
         self.daily_plan_card = DailyPlanCard()
         layout.addWidget(self.daily_plan_card)
+        self.daily_plan_card.exercise_clicked.connect(self.exercise_selected)
 
         self.calendar.date_selected.connect(self._on_date_selected)
 
