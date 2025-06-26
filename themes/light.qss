@@ -95,7 +95,14 @@ CustomCalendarWidget {
 QLabel#calendarHeader {
     font-size: 16pt;
     font-weight: bold;
+<<<<<<< h7n4y8-codex/cambiar-colores-de-cabecera-y-sección
+    color: #1A202C;
+    background-color: #F6AD55;
+    padding: 2px 6px;
+    border-radius: 4px;
+=======
     color: #F6AD55;
+>>>>>>> main
 }
 
 /* Botones de navegación del calendario */
@@ -129,12 +136,19 @@ DayCellWidget[isCurrentMonth="false"] QLabel {
 }
 
 DayCellWidget[isToday="true"] QLabel {
+    border: 2px solid #3182CE;
+    border-radius: 13px;
+}
+
+DayCellWidget[isSelected="true"] QLabel {
     background-color: #3182CE;
     color: white;
     border-radius: 13px;
 }
 
-DayCellWidget[isSelected="true"] QLabel {
+DayCellWidget[isToday="true"][isSelected="true"] QLabel {
+    background-color: #3182CE;
+    color: white;
     border: 2px solid #3182CE;
     border-radius: 13px;
 }
@@ -150,12 +164,26 @@ DailyPlanCard {
 QLabel#planTitle {
     font-size: 12pt;
     font-weight: bold;
+<<<<<<< h7n4y8-codex/cambiar-colores-de-cabecera-y-sección
+    color: #1A202C;
+    background-color: #F6AD55;
+    padding: 2px 6px;
+    border-radius: 4px;
+=======
     color: #F6AD55;
+>>>>>>> main
 }
 
 QLabel#planSubtitle {
     font-size: 9pt;
+<<<<<<< h7n4y8-codex/cambiar-colores-de-cabecera-y-sección
+    color: #1A202C;
+    background-color: #F6AD55;
+    padding: 1px 4px;
+    border-radius: 4px;
+=======
     color: #F6AD55;
+>>>>>>> main
 }
 
 ExerciseRowWidget QLabel#exerciseName {
