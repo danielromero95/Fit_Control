@@ -90,7 +90,7 @@ class MainWindow(QMainWindow):
         # Páginas
         self.dashboard_page = DashboardPage()
         self.dashboard_page.exercise_selected.connect(self._on_exercise_by_name)
-        self.exercises_page = ExercisesPage()
+        self.exercises_page = ExercisesPage(project_root=self.project_root)
         self.exercises_page.exercise_selected.connect(self._on_exercise_selected)
         self.exercise_detail_page = ExerciseDetailPage(
             self._on_video_selected,
