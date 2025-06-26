@@ -28,7 +28,8 @@ from src.config import settings
 from src import database
 from .pages import (
     DashboardPage,
-    AnalysisPage,
+    ExercisesPage,
+    ExerciseDetailPage,
     PlansPage,
     ProgressPage,
     SettingsPage,
@@ -85,7 +86,9 @@ class MainWindow(QMainWindow):
 
         # Páginas
         self.dashboard_page = DashboardPage()
-        self.analysis_page = AnalysisPage(
+        self.exercises_page = ExercisesPage()
+        self.exercises_page.exercise_selected.connect(self._on_exercise_selected)
+        self.exercise_detail_page = ExerciseDetailPage(
             self._on_video_selected,
             self._on_rotation_requested,
             self._open_file_dialog,
@@ -97,16 +100,17 @@ class MainWindow(QMainWindow):
         self.settings_page = SettingsPage(settings.exercises, self._apply_theme)
 
         self.stack.addWidget(self.dashboard_page)
-        self.stack.addWidget(self.analysis_page)
+        self.stack.addWidget(self.exercises_page)
         self.stack.addWidget(self.plans_page)
         self.stack.addWidget(self.progress_page)
         self.stack.addWidget(self.settings_page)
+        self.stack.addWidget(self.exercise_detail_page)
 
         # Botones de navegación
         self.nav_buttons = []
         buttons = [
             ("fa5s.tachometer-alt", "Dashboard", "Ir a la sección de Dashboard"),
-            ("fa5s.camera-retro", "Analizar", "Analizar un nuevo vídeo"),
+            ("fa5s.dumbbell", "Ejercicios", "Explorar biblioteca de ejercicios"),
             ("fa5s.calendar-alt", "Planes", "Gestionar tus planes de entrenamiento"),
             ("fa5s.chart-line", "Progreso", "Consultar historial de análisis"),
             ("fa5s.cog", "Ajustes", "Abrir ajustes de la aplicación"),
@@ -146,6 +150,11 @@ class MainWindow(QMainWindow):
         self.nav_layout.addWidget(btn)
         return btn
 
+    def _on_exercise_selected(self, exercise_id: int) -> None:
+        """Carga el detalle del ejercicio seleccionado y navega a la vista."""
+        self.exercise_detail_page.load_exercise(exercise_id)
+        self._navigate(self.stack.indexOf(self.exercise_detail_page))
+
     
 
     def _apply_theme(self, is_dark: bool):
@@ -161,7 +170,7 @@ class MainWindow(QMainWindow):
         """
         self.video_path = path
         self.current_rotation = 0
-        self.analysis_page.results_label.setText(
+        self.exercise_detail_page.analysis_page.results_label.setText(
             f"Vídeo cargado: {os.path.basename(path)}"
         )
         
@@ -177,14 +186,13 @@ class MainWindow(QMainWindow):
             self.original_pixmap = QPixmap.fromImage(QImage(frame_rgb.data, frame_rgb.shape[1], frame_rgb.shape[0], frame_rgb.strides[0], QImage.Format_RGB888))
             self._update_thumbnail()
         
-        self.analysis_page.process_btn.setEnabled(True)
-        self.analysis_page.progress_bar.setValue(0)
+        self.exercise_detail_page.analysis_page.process_btn.setEnabled(True)
+        self.exercise_detail_page.analysis_page.progress_bar.setValue(0)
         self.progress_page.clear_results()
         # Deshabilitamos el acceso a la página de progreso hasta tener resultados
         if len(self.nav_buttons) > 3:
             self.nav_buttons[3].setEnabled(False)
-        # Mejora de UX: volvemos a la página de análisis
-        self._navigate(1)
+        self._navigate(self.stack.indexOf(self.exercise_detail_page))
         
     def _on_rotation_requested(self, angle: int):
         """Manejador para la rotación manual de la previsualización del vídeo."""
@@ -197,9 +205,9 @@ class MainWindow(QMainWindow):
         if self.original_pixmap is None: return
         transform = QTransform().rotate(self.current_rotation)
         rotated_pixmap = self.original_pixmap.transformed(transform)
-        self.analysis_page.video_display.set_thumbnail(
+        self.exercise_detail_page.analysis_page.video_display.set_thumbnail(
             rotated_pixmap.scaled(
-                self.analysis_page.video_display.size(),
+                self.exercise_detail_page.analysis_page.video_display.size(),
                 Qt.KeepAspectRatio,
                 Qt.SmoothTransformation,
             )
@@ -221,7 +229,7 @@ class MainWindow(QMainWindow):
 
         self.gui_settings = gui_settings
         self.worker = AnalysisWorker(self.video_path, gui_settings)
-        self.worker.progress.connect(self.analysis_page.progress_bar.setValue)
+        self.worker.progress.connect(self.exercise_detail_page.analysis_page.progress_bar.setValue)
         self.worker.error.connect(self._on_processing_error)
         self.worker.finished.connect(self._on_processing_finished)
         
@@ -234,13 +242,13 @@ class MainWindow(QMainWindow):
         # Bloqueamos la sección de Ajustes mientras se procesa
         if len(self.nav_buttons) > 4:
             self.nav_buttons[4].setEnabled(is_enabled)
-        self.analysis_page.process_btn.setEnabled(
+        self.exercise_detail_page.analysis_page.process_btn.setEnabled(
             is_enabled and self.video_path is not None
         )
         if is_processing:
-            self.analysis_page.results_label.setText("Procesando... por favor, espere.")
+            self.exercise_detail_page.analysis_page.results_label.setText("Procesando... por favor, espere.")
         else:
-            self.analysis_page.results_label.setText("Análisis finalizado.")
+            self.exercise_detail_page.analysis_page.results_label.setText("Análisis finalizado.")
 
     def _on_processing_error(self, error_message: str):
         """Slot que se activa si el hilo de análisis emite un error."""
@@ -257,7 +265,7 @@ class MainWindow(QMainWindow):
             logger.error(f"Error guardando resultados en DB: {e}")
 
         rep_count = results.get("repeticiones_contadas", "N/A")
-        self.analysis_page.results_label.setText(
+        self.exercise_detail_page.analysis_page.results_label.setText(
             f"¡Análisis Completo! Repeticiones: {rep_count}"
         )
         
