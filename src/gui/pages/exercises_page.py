@@ -95,6 +95,7 @@ class ExercisesPage(QWidget):
             self.group_sections[grp] = title
 
             ex_scroll = QScrollArea()
+            ex_scroll.setFixedHeight(220)
             ex_scroll.setWidgetResizable(True)
             ex_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
             ex_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
