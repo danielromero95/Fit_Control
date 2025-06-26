@@ -79,6 +79,7 @@ class MainWindow(QMainWindow):
 
         nav_widget = QWidget()
         nav_widget.setObjectName("navPanel")
+        nav_widget.setMinimumWidth(130)
         self.nav_layout = QVBoxLayout(nav_widget)
         self.nav_layout.setContentsMargins(0, 0, 0, 0)
         self.nav_layout.setSpacing(10)

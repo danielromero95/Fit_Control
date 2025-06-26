@@ -22,7 +22,7 @@ class ExerciseCardWidget(QWidget):
         self.setObjectName("ExerciseCardWidget")
         self.setMinimumSize(160, 190)
         self.setCursor(Qt.PointingHandCursor)
-        self.setAttribute(Qt.WA_Hover)
+        self.setAttribute(Qt.WA_Hover, True)
 
         # --- Layout y Contenido ---
         layout = QVBoxLayout(self)
@@ -49,7 +49,7 @@ class ExerciseCardWidget(QWidget):
             self.equipment_label.setAlignment(Qt.AlignCenter)
             text_layout.addWidget(self.equipment_label)
 
-        layout.addWidget(text_container)
+        layout.addWidget(text_container, 0)
 
         self.original_pixmap = self._load_original_pixmap()
 
