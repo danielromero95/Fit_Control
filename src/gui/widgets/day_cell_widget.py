@@ -29,10 +29,9 @@ class DayCellWidget(QWidget):
             self.clicked.emit()
         super().mousePressEvent(event)
 
-    def set_day(self, day_number: int, is_today: bool, is_current_month: bool) -> None:
+    def set_day(self, day_number: int, *, is_current_month: bool) -> None:
         """Actualiza la celda con el número de día y su estado."""
         self.day_label.setText(str(day_number))
-        self.setProperty("isToday", is_today)
         self.setProperty("isCurrentMonth", is_current_month)
         # Forzar repintado de estilos QSS
         self.style().unpolish(self)

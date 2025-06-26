@@ -22,7 +22,6 @@ class CustomCalendarWidget(QWidget):
         super().__init__(parent)
         self._current_date = QDate.currentDate()
         self._selected_date = self._current_date
-        self._selected_cell: DayCellWidget | None = None
         self._cell_dates: dict[DayCellWidget, QDate] = {}
 
         main_layout = QVBoxLayout(self)
@@ -32,6 +31,7 @@ class CustomCalendarWidget(QWidget):
         header_container.setObjectName("calendarHeaderContainer")
         header_layout = QHBoxLayout(header_container)
         header_layout.setContentsMargins(0, 0, 0, 0)
+        
         self.prev_button = QPushButton("<")
         self.prev_button.setObjectName("calendarNavButton")
         self.next_button = QPushButton(">")
@@ -64,122 +64,91 @@ class CustomCalendarWidget(QWidget):
         for row in range(6):
             for col in range(7):
                 cell = DayCellWidget()
-                # DayCellWidget.clicked emits no parameters, so the connected
-                # slot must not expect any. Passing the cell explicitly avoids
-                # a TypeError when the signal is emitted.
+                # Conectamos la señal 'clicked' de la celda a nuestro manejador
                 cell.clicked.connect(lambda c=cell: self._on_cell_clicked(c))
                 self.grid_layout.addWidget(cell, row, col)
                 self.day_cells.append(cell)
 
-        # Conexiones de navegación
         self.prev_button.clicked.connect(self._go_prev_month)
         self.next_button.clicked.connect(self._go_next_month)
 
         self.populate_month(self._current_date.year(), self._current_date.month())
-        # Seleccionamos la fecha actual por defecto
-        for cell, date in self._cell_dates.items():
-            if date == self._selected_date:
-                self._on_cell_clicked(cell)
-                break
 
-    # ------------------------------------------------------------------
     def populate_month(self, year: int, month: int) -> None:
         """Rellena el calendario con los días del mes especificado."""
-        self._current_date = QDate(year, month, 1)
-        self.header_label.setText(self._current_date.toString("MMMM yyyy"))
-
+        self.header_label.setText(f"{QDate(year, month, 1).toString('MMMM yyyy').capitalize()}")
+        
         first_day = QDate(year, month, 1)
-        start_day = first_day.dayOfWeek()  # 1=Mon ... 7=Sun
-        days_in_month = first_day.daysInMonth()
-
         prev_month = first_day.addMonths(-1)
-        days_in_prev = prev_month.daysInMonth()
         next_month = first_day.addMonths(1)
+        
+        days_in_prev_month = prev_month.daysInMonth()
+        start_day_of_week = first_day.dayOfWeek() -1 # Lunes=0, Domingo=6
 
-        today = QDate.currentDate()
-
-        self._cell_dates.clear()
-        self._selected_cell = None
-        index = 0
         # Días del mes anterior
-        for i in range(start_day - 1):
-            day_num = days_in_prev - start_day + 2 + i
-            cell = self.day_cells[index]
-            cell.set_day(day_num, False, False)
-            cell.setProperty("isSelected", False)
-            date = QDate(prev_month.year(), prev_month.month(), day_num)
-            self._cell_dates[cell] = date
-            index += 1
+        for i in range(start_day_of_week):
+            day = days_in_prev_month - start_day_of_week + i + 1
+            cell = self.day_cells[i]
+            cell.set_day(day, is_current_month=False)
+            self._cell_dates[cell] = QDate(prev_month.year(), prev_month.month(), day)
 
         # Días del mes actual
-        for day in range(1, days_in_month + 1):
-            is_today = (
-                day == today.day() and month == today.month() and year == today.year()
-            )
-            cell = self.day_cells[index]
-            cell.set_day(day, is_today, True)
-            date = QDate(year, month, day)
-            is_selected = date == self._selected_date
-            cell.setProperty("isSelected", is_selected)
-            if is_selected:
-                self._selected_cell = cell
-            else:
-                cell.setProperty("isSelected", False)
-            self._cell_dates[cell] = date
-            index += 1
+        days_in_month = first_day.daysInMonth()
+        for i in range(days_in_month):
+            day = i + 1
+            cell = self.day_cells[start_day_of_week + i]
+            cell.set_day(day, is_current_month=True)
+            self._cell_dates[cell] = QDate(year, month, day)
 
         # Días del mes siguiente
+        day_index = start_day_of_week + days_in_month
         next_day = 1
-        while index < len(self.day_cells):
-            cell = self.day_cells[index]
-            cell.set_day(next_day, False, False)
-            cell.setProperty("isSelected", False)
-            date = QDate(next_month.year(), next_month.month(), next_day)
-            self._cell_dates[cell] = date
+        while day_index < len(self.day_cells):
+            cell = self.day_cells[day_index]
+            cell.set_day(next_day, is_current_month=False)
+            self._cell_dates[cell] = QDate(next_month.year(), next_month.month(), next_day)
             next_day += 1
-            index += 1
+            day_index += 1
+            
+        self._update_cell_states()
 
-        # Reaplicar estilos
+    def _update_cell_states(self) -> None:
+        """Actualiza las propiedades 'isToday' y 'isSelected' de todas las celdas."""
+        today = QDate.currentDate()
+        for cell, date in self._cell_dates.items():
+            cell.setProperty("isToday", date == today)
+            cell.setProperty("isSelected", date == self._selected_date)
+        self._refresh_styles()
+
+    def _refresh_styles(self) -> None:
+        """Fuerza la re-evaluación de los estilos de todas las celdas."""
         for cell in self.day_cells:
             cell.style().unpolish(cell)
             cell.style().polish(cell)
+        self.update()
 
-    # ------------------------------------------------------------------
     def _go_prev_month(self) -> None:
-        self._selected_date = self._selected_date.addMonths(-1)
-        new_month_date = QDate(
-            self._selected_date.year(), self._selected_date.month(), 1
-        )
-        self.populate_month(new_month_date.year(), new_month_date.month())
-        for cell, date in self._cell_dates.items():
-            if date == self._selected_date:
-                self._on_cell_clicked(cell)
-                break
+        self._current_date = self._current_date.addMonths(-1)
+        self.populate_month(self._current_date.year(), self._current_date.month())
 
     def _go_next_month(self) -> None:
-        self._selected_date = self._selected_date.addMonths(1)
-        new_month_date = QDate(
-            self._selected_date.year(), self._selected_date.month(), 1
-        )
-        self.populate_month(new_month_date.year(), new_month_date.month())
-        for cell, date in self._cell_dates.items():
-            if date == self._selected_date:
-                self._on_cell_clicked(cell)
-                break
+        self._current_date = self._current_date.addMonths(1)
+        self.populate_month(self._current_date.year(), self._current_date.month())
 
-    # ------------------------------------------------------------------
     def _on_cell_clicked(self, cell: DayCellWidget) -> None:
+        """Manejador para cuando se hace clic en una celda."""
         if cell not in self._cell_dates:
             return
-        if self._selected_cell is not None:
-            self._selected_cell.setProperty("isSelected", False)
-            self._selected_cell.style().unpolish(self._selected_cell)
-            self._selected_cell.style().polish(self._selected_cell)
 
-        self._selected_cell = cell
-        self._selected_date = self._cell_dates[cell]
-        cell.setProperty("isSelected", True)
-        cell.style().unpolish(cell)
-        cell.style().polish(cell)
-        self.update()
+        clicked_date = self._cell_dates[cell]
+        
+        # Si la fecha pertenece al mes anterior/siguiente, cambia de mes
+        if clicked_date.month() != self._current_date.month():
+            self._current_date = clicked_date
+            self._selected_date = clicked_date
+            self.populate_month(self._current_date.year(), self._current_date.month())
+        else:
+            self._selected_date = clicked_date
+            self._update_cell_states()
+        
         self.date_selected.emit(self._selected_date)
