@@ -261,6 +261,7 @@ QWidget#ExerciseCardWidget:hover {
 
 QLabel#exerciseCardName {
     font-weight: bold;
+    font-size: 10pt; /* Tamaño de fuente explícito */
     color: #2D3748;
 }
 
