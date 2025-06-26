@@ -45,7 +45,7 @@ class DailyPlanCard(QWidget):
         main_layout.addLayout(header_layout)
 
         self.exercises_layout = QVBoxLayout()
-        self.exercises_layout.setSpacing(4)
+        self.exercises_layout.setSpacing(8)
         main_layout.addLayout(self.exercises_layout)
 
     # --------------------------------------------------------------

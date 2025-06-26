@@ -95,7 +95,7 @@ CustomCalendarWidget {
 QLabel#calendarHeader {
     font-size: 16pt;
     font-weight: bold;
-    color: #2D3748;
+    color: #F6AD55;
 }
 
 /* Botones de navegación del calendario */
@@ -150,12 +150,12 @@ DailyPlanCard {
 QLabel#planTitle {
     font-size: 12pt;
     font-weight: bold;
-    color: #2D3748;
+    color: #F6AD55;
 }
 
 QLabel#planSubtitle {
     font-size: 9pt;
-    color: #718096;
+    color: #F6AD55;
 }
 
 ExerciseRowWidget QLabel#exerciseName {

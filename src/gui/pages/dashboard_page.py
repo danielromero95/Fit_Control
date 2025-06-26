@@ -17,6 +17,7 @@ class DashboardPage(QWidget):
         super().__init__(parent)
 
         layout = QVBoxLayout(self)
+        layout.setSpacing(8)
 
         self.calendar = CustomCalendarWidget()
         layout.addWidget(self.calendar)
