@@ -2,10 +2,16 @@ from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QComboBox,
-    QListWidget,
-    QListWidgetItem,
+    QScrollArea,
+    QLabel,
+    QHBoxLayout,
+    QApplication,
 )
 from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QMovie
+from pathlib import Path
+
+from ..widgets.exercise_card_widget import ExerciseCardWidget
 
 from ... import database
 
@@ -23,39 +29,89 @@ class ExercisesPage(QWidget):
         self.group_combo = QComboBox()
         layout.addWidget(self.group_combo)
 
-        self.exercise_list = QListWidget()
-        layout.addWidget(self.exercise_list, 1)
+        self.loading_label = QLabel()
+        self.loading_label.setAlignment(Qt.AlignCenter)
+        self.loading_movie = QMovie(str(Path('assets') / 'Gym_Loading_Gif.gif'))
+        self.loading_label.setMovie(self.loading_movie)
+        self.loading_label.hide()
+        layout.addWidget(self.loading_label)
 
-        self.group_combo.currentTextChanged.connect(self.on_group_changed)
-        self.exercise_list.itemDoubleClicked.connect(self.on_exercise_double_clicked)
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        layout.addWidget(self.scroll_area, 1)
+
+        self.container = QWidget()
+        self.scroll_layout = QVBoxLayout(self.container)
+        self.scroll_layout.setContentsMargins(0, 0, 0, 0)
+        self.scroll_layout.setSpacing(10)
+        self.scroll_area.setWidget(self.container)
+
+        self.group_combo.currentTextChanged.connect(self.on_group_selected)
+
+        self.group_sections: dict[str, QWidget] = {}
 
         self.refresh_groups()
 
     def refresh_groups(self) -> None:
-        """Carga la lista de grupos musculares en el combo."""
+        """Carga los grupos musculares y reconstruye la vista."""
         self.group_combo.clear()
         groups = database.get_all_muscle_groups()
-        self.group_combo.addItem("Todos")
         for g in groups:
             self.group_combo.addItem(g)
+
+        self.scroll_area.hide()
+        self.loading_label.show()
+        self.loading_movie.start()
+        QApplication.processEvents()
+
+        self._build_sections(groups)
+
+        self.loading_movie.stop()
+        self.loading_label.hide()
+        self.scroll_area.show()
+
         if self.group_combo.count() > 0:
             self.group_combo.setCurrentIndex(0)
-            self.refresh_exercises()
 
-    def on_group_changed(self, group: str) -> None:
-        self.refresh_exercises()
+    def on_group_selected(self, group: str) -> None:
+        section = self.group_sections.get(group)
+        if section is not None:
+            self.scroll_area.ensureWidgetVisible(section, yMargin=10)
 
-    def refresh_exercises(self) -> None:
-        group = self.group_combo.currentText()
-        self.exercise_list.clear()
-        exercises = database.get_exercises_by_group(group)
-        for ex in exercises:
-            it = QListWidgetItem(ex["name"])
-            it.setData(Qt.UserRole, ex["id"])
-            self.exercise_list.addItem(it)
+    def _build_sections(self, groups: list[str]) -> None:
+        while self.scroll_layout.count():
+            item = self.scroll_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
 
-    def on_exercise_double_clicked(self, item: QListWidgetItem) -> None:
-        ex_id = item.data(Qt.UserRole)
-        if ex_id is not None:
-            self.exercise_selected.emit(int(ex_id))
+        self.group_sections.clear()
+
+        for grp in groups:
+            title = QLabel(grp)
+            title.setObjectName("muscleGroupTitle")
+            self.scroll_layout.addWidget(title)
+            self.group_sections[grp] = title
+
+            ex_scroll = QScrollArea()
+            ex_scroll.setWidgetResizable(True)
+            ex_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            ex_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
+            cont = QWidget()
+            h_layout = QHBoxLayout(cont)
+            h_layout.setContentsMargins(2, 2, 2, 2)
+            h_layout.setSpacing(8)
+
+            ex_scroll.setWidget(cont)
+            self.scroll_layout.addWidget(ex_scroll)
+
+            exercises = database.get_exercises_by_group(grp)
+            for ex in exercises:
+                card = ExerciseCardWidget(
+                    int(ex["id"]), ex["name"], ex.get("image_url"), ex.get("equipment")
+                )
+                card.clicked.connect(self.exercise_selected)
+                h_layout.addWidget(card)
+
+            h_layout.addStretch(1)
 

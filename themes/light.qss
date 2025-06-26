@@ -239,3 +239,43 @@ ExerciseRowWidget QLabel#exerciseDetail {
     font-size: 9pt;
     color: #718096;
 }
+
+QLabel#muscleGroupTitle {
+    font-size: 16pt;
+    font-weight: bold;
+    color: #F6AD55;
+    padding-top: 15px;
+    padding-left: 5px;
+}
+
+QWidget#ExerciseCardWidget {
+    background-color: #FFFFFF;
+    border-radius: 8px;
+    border: 1px solid #E2E8F0;
+}
+
+QWidget#ExerciseCardWidget:hover {
+    border: 1px solid #3182CE;
+}
+
+QLabel#exerciseCardName {
+    font-weight: bold;
+    color: #2D3748;
+}
+
+QLabel#exerciseCardEquipment {
+    color: #718096;
+    font-size: 8pt;
+}
+
+QScrollArea QScrollBar:horizontal {
+    height: 8px;
+    background-color: #EDF2F7;
+    margin: 0;
+}
+
+QScrollArea QScrollBar::handle:horizontal {
+    background-color: #CBD5E0;
+    min-width: 20px;
+    border-radius: 4px;
+}
