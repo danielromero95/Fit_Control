@@ -1,17 +1,23 @@
 from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
+    QHBoxLayout,
     QFormLayout,
     QComboBox,
     QSpinBox,
     QLineEdit,
     QTextEdit,
     QPushButton,
+    QListWidget,
+    QListWidgetItem,
+    QInputDialog,
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QMessageBox
+from datetime import datetime
 
 from ...services.plan_generator import PlanGeneratorWorker
+from ... import database
 
 
 class PlansPage(QWidget):
@@ -20,7 +26,11 @@ class PlansPage(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
 
-        main_layout = QVBoxLayout(self)
+        main_layout = QHBoxLayout(self)
+
+        # ----- Left column -----
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
 
         form_layout = QFormLayout()
 
@@ -47,20 +57,48 @@ class PlansPage(QWidget):
         self.enfoque_le = QLineEdit()
         form_layout.addRow("Grupos Musculares (Opcional):", self.enfoque_le)
 
-        main_layout.addLayout(form_layout)
+        left_layout.addLayout(form_layout)
+
+        self.saved_plans_list = QListWidget()
+        left_layout.addWidget(self.saved_plans_list, 1)
+
+        self.refresh_btn = QPushButton("Actualizar Lista")
+        left_layout.addWidget(self.refresh_btn)
+
+        main_layout.addWidget(left_widget)
+
+        # ----- Right column -----
+        right_widget = QWidget()
+        right_layout = QVBoxLayout(right_widget)
 
         self.results_text_edit = QTextEdit()
         self.results_text_edit.setReadOnly(True)
         self.results_text_edit.setPlaceholderText(
             "Aquí aparecerá tu plan de entrenamiento..."
         )
-        main_layout.addWidget(self.results_text_edit, 1)
+        right_layout.addWidget(self.results_text_edit, 1)
+
+        self.save_plan_btn = QPushButton("Guardar Plan Actual")
+        self.save_plan_btn.setEnabled(False)
+        right_layout.addWidget(self.save_plan_btn)
+
+        self.set_active_btn = QPushButton("Establecer como Plan Activo")
+        self.set_active_btn.setEnabled(False)
+        right_layout.addWidget(self.set_active_btn)
 
         self.generate_btn = QPushButton("Generar Plan")
         self.generate_btn.clicked.connect(self.on_generate_plan_clicked)
-        main_layout.addWidget(self.generate_btn)
+        left_layout.addWidget(self.generate_btn)
+
+        main_layout.addWidget(right_widget, 1)
 
         self.worker = None
+
+        self.refresh_btn.clicked.connect(self.refresh_saved_plans)
+        self.save_plan_btn.clicked.connect(self.on_save_plan_clicked)
+        self.set_active_btn.clicked.connect(self.on_set_active_plan)
+        self.saved_plans_list.itemClicked.connect(self.on_saved_plan_selected)
+        self.refresh_saved_plans()
 
     def on_generate_plan_clicked(self) -> None:
         """Inicia la generación de planes en un hilo separado."""
@@ -80,8 +118,57 @@ class PlansPage(QWidget):
     def on_plan_generation_finished(self, plan_text: str) -> None:
         self.generate_btn.setEnabled(True)
         self.results_text_edit.setMarkdown(plan_text)
+        self.save_plan_btn.setEnabled(True)
 
     def on_plan_generation_error(self, error_message: str) -> None:
         self.generate_btn.setEnabled(True)
         QMessageBox.critical(self, "Error generando plan", error_message)
+
+    def refresh_saved_plans(self) -> None:
+        """Carga los planes almacenados en la base de datos."""
+        self.saved_plans_list.clear()
+        rows = database.get_all_training_plans()
+        for row in rows:
+            try:
+                ts = datetime.fromisoformat(row["timestamp"])
+                formatted = ts.strftime("%d %b %Y - %H:%M")
+            except Exception:
+                formatted = row["timestamp"]
+            item_text = f"{row['title']} - {formatted}"
+            item = QListWidgetItem(item_text)
+            item.setData(Qt.UserRole, row["id"])
+            self.saved_plans_list.addItem(item)
+        self.set_active_btn.setEnabled(self.saved_plans_list.count() > 0)
+
+    def on_save_plan_clicked(self) -> None:
+        """Solicita un título y guarda el plan actual."""
+        if not self.results_text_edit.toPlainText().strip():
+            return
+        title, ok = QInputDialog.getText(self, "Guardar Plan", "Título del plan:")
+        if ok and title.strip():
+            database.save_training_plan(title.strip(), self.results_text_edit.toMarkdown())
+            self.save_plan_btn.setEnabled(False)
+            window = self.window()
+            if hasattr(window, "statusBar"):
+                window.statusBar().showMessage("Plan guardado", 5000)
+            self.refresh_saved_plans()
+
+    def on_saved_plan_selected(self, item: QListWidgetItem) -> None:
+        plan_id = item.data(Qt.UserRole)
+        row = database.get_plan_by_id(int(plan_id))
+        if row:
+            self.results_text_edit.setMarkdown(row.get("plan_content_md", ""))
+            self.save_plan_btn.setEnabled(False)
+        self.set_active_btn.setEnabled(True)
+
+    def on_set_active_plan(self) -> None:
+        """Establece el plan seleccionado como activo en el estado global."""
+        item = self.saved_plans_list.currentItem()
+        if not item:
+            return
+        plan_id = item.data(Qt.UserRole)
+        database.set_app_state("active_plan_id", str(plan_id))
+        window = self.window()
+        if hasattr(window, "statusBar"):
+            window.statusBar().showMessage("Plan activo actualizado", 5000)
 

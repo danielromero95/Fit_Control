@@ -28,6 +28,24 @@ def init_db() -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS training_plans(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT,
+                timestamp TEXT,
+                plan_content_md TEXT
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS app_state(
+                key TEXT PRIMARY KEY,
+                value TEXT
+            )
+            """
+        )
     conn.close()
 
 def get_all_analysis_results() -> list:
@@ -39,6 +57,64 @@ def get_all_analysis_results() -> list:
     rows = cursor.fetchall()
     conn.close()
     return [dict(row) for row in rows]
+
+def save_training_plan(title: str, content: str) -> int:
+    """Guarda un plan de entrenamiento y devuelve su ID."""
+    conn = get_db_connection()
+    timestamp = datetime.utcnow().isoformat()
+    with conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO training_plans(title, timestamp, plan_content_md)
+            VALUES (?, ?, ?)
+            """,
+            (title, timestamp, content),
+        )
+        new_id = cursor.lastrowid
+    conn.close()
+    return new_id
+
+def get_all_training_plans() -> list:
+    """Devuelve todos los planes guardados ordenados por fecha descendente."""
+    conn = get_db_connection()
+    cursor = conn.execute(
+        "SELECT * FROM training_plans ORDER BY timestamp DESC"
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+def get_plan_by_id(plan_id: int) -> Dict[str, Any] | None:
+    """Obtiene un plan de entrenamiento por su ID."""
+    conn = get_db_connection()
+    cursor = conn.execute(
+        "SELECT * FROM training_plans WHERE id = ?",
+        (plan_id,),
+    )
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def set_app_state(key: str, value: str) -> None:
+    """Inserta o actualiza un par clave-valor en la tabla app_state."""
+    conn = get_db_connection()
+    with conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO app_state(key, value) VALUES (?, ?)",
+            (key, value),
+        )
+    conn.close()
+
+def get_app_state(key: str) -> str | None:
+    """Recupera el valor asociado a una clave de la tabla app_state."""
+    conn = get_db_connection()
+    cursor = conn.execute(
+        "SELECT value FROM app_state WHERE key = ?",
+        (key,),
+    )
+    row = cursor.fetchone()
+    conn.close()
+    return row["value"] if row else None
 
 def get_analysis_results_by_exercise(exercise_name: str) -> list:
     """Devuelve los análisis de un ejercicio ordenados por fecha ascendente."""
@@ -103,3 +179,13 @@ def save_analysis_results(results: Dict[str, Any], gui_settings: Dict[str, Any])
     except Exception as e:  # pragma: no cover - tolerancia a fallos
         logging.error(f"Error al guardar en la base de datos: {e}")
         return None
+
+def get_latest_analysis() -> Dict[str, Any] | None:
+    """Devuelve el último análisis realizado."""
+    conn = get_db_connection()
+    cursor = conn.execute(
+        "SELECT * FROM analysis_results ORDER BY timestamp DESC LIMIT 1"
+    )
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
