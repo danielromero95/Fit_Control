@@ -13,6 +13,7 @@ from PyQt5.QtGui import QGraphicsOpacityEffect
 from typing import Iterable
 import qtawesome as qta
 
+
 class ExerciseRowWidget(QWidget):
     """Fila individual de ejercicio en el plan diario."""
 
@@ -63,6 +64,7 @@ class DailyPlanCard(QWidget):
     """Tarjeta que muestra el plan diario de entrenamiento."""
 
     exercise_clicked = pyqtSignal(str)
+    start_clicked = pyqtSignal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -106,6 +108,11 @@ class DailyPlanCard(QWidget):
         self.exercises_layout.setSpacing(8)
         main_layout.addLayout(self.exercises_layout)
 
+        self.start_btn = QPushButton("Empezar Entrenamiento")
+        self.start_btn.setObjectName("startTrainingButton")
+        self.start_btn.clicked.connect(self.start_clicked)
+        main_layout.addWidget(self.start_btn)
+
         self._total_exercises = 0
         self._completed = 0
 
@@ -124,6 +131,7 @@ class DailyPlanCard(QWidget):
             self.count_lbl.setText("")
             self.time_lbl.setText("")
             self.progress_bar.setValue(0)
+            self.start_btn.setEnabled(False)
             return
 
         self.count_lbl.setText(f"{len(exercises_list)} ejercicios")
@@ -140,6 +148,8 @@ class DailyPlanCard(QWidget):
             row.clicked.connect(self.exercise_clicked)
             self.exercises_layout.addWidget(row)
 
+        self.start_btn.setEnabled(True)
+
     def _on_row_checked(self, checked: bool) -> None:
         if checked:
             self._completed += 1
@@ -148,4 +158,3 @@ class DailyPlanCard(QWidget):
         if self._total_exercises:
             percent = int(100 * self._completed / self._total_exercises)
             self.progress_bar.setValue(percent)
-
