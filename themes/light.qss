@@ -147,30 +147,33 @@ DayCellWidget QLabel {
     min-height: 26px;
     max-height: 26px;
     color: #4A5568;
+    border-radius: 13px;
+    border: 2px solid transparent;
 }
 
 DayCellWidget[isCurrentMonth="false"] QLabel {
     color: #A0AEC0;
 }
 
+/* ESTADO: HOY (solo borde) */
 DayCellWidget[isToday="true"] QLabel {
     border: 2px solid #2D3748;
-    border-radius: 13px;
+    color: #2D3748;
     background-color: transparent;
 }
 
+/* ESTADO: SELECCIONADO (solo fondo) */
 DayCellWidget[isSelected="true"] QLabel {
     background-color: #3182CE;
     color: white;
-    border-radius: 13px;
     border: 2px solid transparent;
 }
 
+/* ESTADO: COMBINADO (HOY y SELECCIONADO) */
 DayCellWidget[isToday="true"][isSelected="true"] QLabel {
     background-color: #3182CE;
     color: white;
     border: 2px solid #2D3748;
-    border-radius: 13px;
 }
 
 /* Tarjeta del plan diario */

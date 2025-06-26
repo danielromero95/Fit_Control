@@ -181,4 +181,5 @@ class CustomCalendarWidget(QWidget):
         cell.setProperty("isSelected", True)
         cell.style().unpolish(cell)
         cell.style().polish(cell)
+        self.update()
         self.date_selected.emit(self._selected_date)
