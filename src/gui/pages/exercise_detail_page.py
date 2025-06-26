@@ -96,7 +96,7 @@ class ExerciseDetailPage(QWidget):
         if not row:
             return
         self.description_edit.setMarkdown(row.get("description_md", ""))
-        img_path = row.get("image_url")
+        img_path = row.get("icon_path")
         if img_path and os.path.exists(img_path):
             self.image_label.setPixmap(QPixmap(img_path))
         else:

@@ -108,7 +108,7 @@ class ExercisesPage(QWidget):
             exercises = database.get_exercises_by_group(grp)
             for ex in exercises:
                 card = ExerciseCardWidget(
-                    int(ex["id"]), ex["name"], ex.get("image_url"), ex.get("equipment")
+                    int(ex["id"]), ex["name"], ex.get("icon_path"), ex.get("equipment")
                 )
                 card.clicked.connect(self.exercise_selected)
                 h_layout.addWidget(card)

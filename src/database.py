@@ -35,7 +35,8 @@ def init_db() -> None:
                 name TEXT UNIQUE,
                 muscle_group TEXT,
                 description_md TEXT,
-                image_url TEXT,
+                icon_path TEXT,
+                image_full_path TEXT,
                 equipment TEXT
             )
             """
@@ -251,21 +252,24 @@ def populate_initial_exercises() -> None:
             "name": "Lat Pulldown",
             "muscle_group": "Espalda",
             "description_md": "Ejercicio para dorsales con agarre en polea.",
-            "image_url": "assets/muscles/lat_pulldown.png",
+            "icon_path": "assets/exercises/back/lat_pulldown_icon.png",
+            "image_full_path": "assets/exercises/back/lat_pulldown_full.png",
             "equipment": "Máquina",
         },
         {
             "name": "Bench Press",
             "muscle_group": "Pecho",
             "description_md": "Press de banca convencional.",
-            "image_url": "assets/muscles/bench_press.png",
+            "icon_path": "assets/exercises/chest/bench_press_icon.png",
+            "image_full_path": "assets/exercises/chest/bench_press_full.png",
             "equipment": "Barra",
         },
         {
             "name": "Squat",
             "muscle_group": "Pierna",
             "description_md": "Sentadilla completa con barra.",
-            "image_url": "assets/muscles/squat.png",
+            "icon_path": "assets/exercises/legs/squat_icon.png",
+            "image_full_path": "assets/exercises/legs/squat_full.png",
             "equipment": "Barra",
         },
     ]
@@ -274,14 +278,15 @@ def populate_initial_exercises() -> None:
         for ex in sample_exercises:
             conn.execute(
                 """
-                INSERT OR IGNORE INTO exercises(name, muscle_group, description_md, image_url, equipment)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT OR IGNORE INTO exercises(name, muscle_group, description_md, icon_path, image_full_path, equipment)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
                 (
                     ex["name"],
                     ex["muscle_group"],
                     ex["description_md"],
-                    ex["image_url"],
+                    ex["icon_path"],
+                    ex["image_full_path"],
                     ex["equipment"],
                 ),
             )
