@@ -8,7 +8,7 @@ Módulo para almacenar constantes fijas de la aplicación.
 """
 
 # Información de la Aplicación
-APP_NAME = "Gym Performance Analyzer"
+APP_NAME = "FitControl"
 ORGANIZATION_NAME = "TFM-DanielRomero"
 
 # Extensiones de vídeo soportadas

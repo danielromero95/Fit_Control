@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import (
     QButtonGroup,
 )
 from PyQt5.QtCore import Qt, QSettings, QByteArray
-from PyQt5.QtGui import QPixmap, QImage, QTransform, QCloseEvent
+from PyQt5.QtGui import QPixmap, QImage, QTransform, QCloseEvent, QIcon
 from typing import Dict, Any, Optional
 
 import qtawesome as qta
@@ -59,6 +59,7 @@ class MainWindow(QMainWindow):
         self.original_pixmap: Optional[QPixmap] = None
 
         self.setWindowTitle(app_constants.APP_NAME)
+        self.setWindowIcon(QIcon('assets/FitControl_logo.ico'))
         self.resize(800, 750)
         
         self._init_ui()
@@ -102,14 +103,14 @@ class MainWindow(QMainWindow):
         # Botones de navegación
         self.nav_buttons = []
         buttons = [
-            ("fa5s.tachometer-alt", "Dashboard"),
-            ("fa5s.camera-retro", "Analizar"),
-            ("fa5s.calendar-alt", "Planes"),
-            ("fa5s.chart-line", "Progreso"),
-            ("fa5s.cog", "Ajustes"),
+            ("fa5s.tachometer-alt", "Dashboard", "Ir a la sección de Dashboard"),
+            ("fa5s.camera-retro", "Analizar", "Analizar un nuevo vídeo"),
+            ("fa5s.calendar-alt", "Planes", "Gestionar tus planes de entrenamiento"),
+            ("fa5s.chart-line", "Progreso", "Consultar historial de análisis"),
+            ("fa5s.cog", "Ajustes", "Abrir ajustes de la aplicación"),
         ]
-        for idx, (icon_name, text) in enumerate(buttons):
-            btn = self._create_nav_button(icon_name, text, idx)
+        for idx, (icon_name, text, tip) in enumerate(buttons):
+            btn = self._create_nav_button(icon_name, text, idx, tip)
             self.nav_buttons.append(btn)
 
         self.nav_layout.addStretch(1)
@@ -133,10 +134,11 @@ class MainWindow(QMainWindow):
         w.update()
         w.repaint()
 
-    def _create_nav_button(self, icon_name: str, text: str, page_index: int) -> QPushButton:
+    def _create_nav_button(self, icon_name: str, text: str, page_index: int, tooltip: str) -> QPushButton:
         btn = QPushButton(text)
         btn.setIcon(qta.icon(icon_name))
         btn.setCheckable(True)
+        btn.setToolTip(tooltip)
         self.nav_group.addButton(btn, page_index)
         btn.clicked.connect(lambda _: self._navigate(page_index))
         self.nav_layout.addWidget(btn)
