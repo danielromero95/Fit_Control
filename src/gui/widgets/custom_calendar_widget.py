@@ -63,7 +63,10 @@ class CustomCalendarWidget(QWidget):
         for row in range(6):
             for col in range(7):
                 cell = DayCellWidget()
-                cell.clicked.connect(lambda _, c=cell: self._on_cell_clicked(c))
+                # DayCellWidget.clicked emits no parameters, so the connected
+                # slot must not expect any. Passing the cell explicitly avoids
+                # a TypeError when the signal is emitted.
+                cell.clicked.connect(lambda c=cell: self._on_cell_clicked(c))
                 self.grid_layout.addWidget(cell, row, col)
                 self.day_cells.append(cell)
 
