@@ -28,7 +28,10 @@ class CustomCalendarWidget(QWidget):
         main_layout = QVBoxLayout(self)
 
         # ----- Cabecera de navegación -----
-        header_layout = QHBoxLayout()
+        header_container = QWidget()
+        header_container.setObjectName("calendarHeaderContainer")
+        header_layout = QHBoxLayout(header_container)
+        header_layout.setContentsMargins(0, 0, 0, 0)
         self.prev_button = QPushButton("<")
         self.prev_button.setObjectName("calendarNavButton")
         self.next_button = QPushButton(">")
@@ -38,11 +41,9 @@ class CustomCalendarWidget(QWidget):
         self.header_label.setAlignment(Qt.AlignCenter)
 
         header_layout.addWidget(self.prev_button)
-        header_layout.addStretch()
         header_layout.addWidget(self.header_label)
-        header_layout.addStretch()
         header_layout.addWidget(self.next_button)
-        main_layout.addLayout(header_layout)
+        main_layout.addWidget(header_container)
 
         # ----- Encabezado de días de la semana -----
         week_layout = QGridLayout()
@@ -146,7 +147,9 @@ class CustomCalendarWidget(QWidget):
     # ------------------------------------------------------------------
     def _go_prev_month(self) -> None:
         self._selected_date = self._selected_date.addMonths(-1)
-        new_month_date = QDate(self._selected_date.year(), self._selected_date.month(), 1)
+        new_month_date = QDate(
+            self._selected_date.year(), self._selected_date.month(), 1
+        )
         self.populate_month(new_month_date.year(), new_month_date.month())
         for cell, date in self._cell_dates.items():
             if date == self._selected_date:
@@ -155,7 +158,9 @@ class CustomCalendarWidget(QWidget):
 
     def _go_next_month(self) -> None:
         self._selected_date = self._selected_date.addMonths(1)
-        new_month_date = QDate(self._selected_date.year(), self._selected_date.month(), 1)
+        new_month_date = QDate(
+            self._selected_date.year(), self._selected_date.month(), 1
+        )
         self.populate_month(new_month_date.year(), new_month_date.month())
         for cell, date in self._cell_dates.items():
             if date == self._selected_date:
