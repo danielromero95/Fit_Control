@@ -7,9 +7,9 @@ from PyQt5.QtWidgets import (
     QLabel,
     QCheckBox,
     QProgressBar,
+    QGraphicsOpacityEffect,
 )
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QGraphicsOpacityEffect
 from typing import Iterable
 import qtawesome as qta
 
