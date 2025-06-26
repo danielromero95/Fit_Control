@@ -61,6 +61,7 @@ class MainWindow(QMainWindow):
         self.q_settings = QSettings(app_constants.ORGANIZATION_NAME, app_constants.APP_NAME)
         self.current_rotation: int = 0
         self.original_pixmap: Optional[QPixmap] = None
+        self.current_exercise_name: Optional[str] = None
 
         self.setWindowTitle(app_constants.APP_NAME)
         self.setWindowIcon(QIcon('assets/FitControl_logo.ico'))
@@ -68,7 +69,7 @@ class MainWindow(QMainWindow):
         
         self._init_ui()
         self._load_settings()
-        self._apply_theme(self.settings_page.dark_mode_check.isChecked())
+        self._apply_theme(self.settings_page.theme_combo.currentText() == "Oscuro")
 
     def _init_ui(self):
         """Construye e inicializa todos los componentes de la interfaz de usuario."""
@@ -100,7 +101,7 @@ class MainWindow(QMainWindow):
         self.progress_page = ProgressPage()
         self.results_panel = self.progress_page.results_panel
         self.plans_page = PlansPage(self.translator)
-        self.settings_page = SettingsPage(settings.exercises, self._apply_theme)
+        self.settings_page = SettingsPage(self._apply_theme)
         self.contact_page = ContactPage()
 
         self.stack.addWidget(self.dashboard_page)
@@ -163,6 +164,9 @@ class MainWindow(QMainWindow):
 
     def _on_exercise_selected(self, exercise_id: int) -> None:
         """Carga el detalle del ejercicio seleccionado y navega a la vista."""
+        row = database.get_exercise_by_id(exercise_id)
+        if row:
+            self.current_exercise_name = row.get("name")
         self.exercise_detail_page.load_exercise(exercise_id)
         self._navigate(self.stack.indexOf(self.exercise_detail_page))
 
@@ -238,8 +242,8 @@ class MainWindow(QMainWindow):
             "output_dir": self.settings_page.output_dir_edit.text().strip(),
             "sample_rate": self.settings_page.sample_rate_spin.value(),
             "rotate": self.current_rotation,
-            "dark_mode": self.settings_page.dark_mode_check.isChecked(),
-            "exercise": self.settings_page.exercise_combo.currentText(),
+            "dark_mode": self.settings_page.theme_combo.currentText() == "Oscuro",
+            "exercise": self.current_exercise_name or next(iter(settings.exercises)),
             "video_path": self.video_path,
         }
 
@@ -303,26 +307,18 @@ class MainWindow(QMainWindow):
             )
         )
 
-        saved_exercise = self.q_settings.value(
-            "exercise", next(iter(settings.exercises))
-        )
-        index = self.settings_page.exercise_combo.findText(saved_exercise)
-        if index >= 0:
-            self.settings_page.exercise_combo.setCurrentIndex(index)
-
         geometry = self.q_settings.value("geometry", QByteArray())
         if isinstance(geometry, QByteArray) and not geometry.isEmpty():
             self.restoreGeometry(geometry)
 
         # Siempre empezamos en el dashboard
-        self.settings_page.dark_mode_check.setChecked(
-            self.q_settings.value(
-                "dark_mode", app_constants.DEFAULT_DARK_MODE, type=bool
-            )
+        is_dark = self.q_settings.value(
+            "dark_mode", app_constants.DEFAULT_DARK_MODE, type=bool
         )
+        self.settings_page.theme_combo.setCurrentText("Oscuro" if is_dark else "Claro")
 
         # Aplicamos el tema explícitamente al arrancar
-        self._apply_theme(self.settings_page.dark_mode_check.isChecked())
+        self._apply_theme(is_dark)
         self._navigate(0)
 
     def closeEvent(self, event: QCloseEvent):
@@ -334,10 +330,7 @@ class MainWindow(QMainWindow):
             "sample_rate", self.settings_page.sample_rate_spin.value()
         )
         self.q_settings.setValue(
-            "exercise", self.settings_page.exercise_combo.currentText()
-        )
-        self.q_settings.setValue(
-            "dark_mode", self.settings_page.dark_mode_check.isChecked()
+            "dark_mode", self.settings_page.theme_combo.currentText() == "Oscuro"
         )
         self.q_settings.setValue("geometry", self.saveGeometry())
         super().closeEvent(event)
