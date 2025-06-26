@@ -6,6 +6,8 @@ from PyQt5.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QComboBox,
+    QPushButton,
+    QMessageBox,
 )
 from PyQt5.QtCore import Qt
 import pyqtgraph as pg
@@ -51,9 +53,13 @@ class ProgressPage(QWidget):
         self.results_panel = ResultsPanel(self)
         layout.addWidget(self.results_panel, 2)
 
+        self.delete_btn = QPushButton("Borrar Análisis Seleccionado")
+        layout.addWidget(self.delete_btn)
+
         self.list_widget.itemClicked.connect(self.on_analysis_selected)
         self.exercise_combo.currentTextChanged.connect(self.refresh_analysis_list)
         self.metric_combo.currentTextChanged.connect(self.update_plot_view)
+        self.delete_btn.clicked.connect(self.on_delete_selected)
 
         self.refresh_analysis_list(self.exercise_combo.currentText())
 
@@ -177,3 +183,17 @@ class ProgressPage(QWidget):
             symbol='o',
             symbolBrush=line_color,
         )
+
+    def on_delete_selected(self) -> None:
+        item = self.list_widget.currentItem()
+        if not item:
+            return
+        analysis_id = item.data(Qt.UserRole)
+        reply = QMessageBox.question(
+            self,
+            "Confirmar Borrado",
+            "¿Seguro que deseas borrar este análisis?",
+        )
+        if reply == QMessageBox.Yes:
+            database.delete_analysis_by_id(int(analysis_id))
+            self.refresh_analysis_list(self.exercise_combo.currentText())

@@ -14,8 +14,13 @@ os.environ['TFLITE_CPP_MIN_LOG_LEVEL'] = '3'
 import sys
 import logging
 from PyQt5.QtWidgets import QApplication
+from src.i18n.translator import Translator
 
 from src import database
+
+# Instancia global del traductor
+_TRANSLATIONS_PATH = os.path.join(os.path.dirname(__file__), '..', 'i18n', 'es.json')
+translator = Translator(os.path.abspath(_TRANSLATIONS_PATH))
 
 # 2) Utils propias
 from .main_window import MainWindow

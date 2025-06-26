@@ -116,6 +116,14 @@ def get_app_state(key: str) -> str | None:
     conn.close()
     return row["value"] if row else None
 
+def get_active_plan_id() -> int | None:
+    """Devuelve el ID del plan activo almacenado en app_state."""
+    val = get_app_state("active_plan_id")
+    try:
+        return int(val) if val is not None else None
+    except (TypeError, ValueError):
+        return None
+
 def get_analysis_results_by_exercise(exercise_name: str) -> list:
     """Devuelve los análisis de un ejercicio ordenados por fecha ascendente."""
     conn = get_db_connection()
@@ -137,6 +145,16 @@ def get_analysis_by_id(analysis_id: int) -> Dict[str, Any] | None:
     row = cursor.fetchone()
     conn.close()
     return dict(row) if row else None
+
+def delete_analysis_by_id(analysis_id: int) -> None:
+    """Elimina un análisis de la base de datos por su ID."""
+    conn = get_db_connection()
+    with conn:
+        conn.execute(
+            "DELETE FROM analysis_results WHERE id = ?",
+            (analysis_id,),
+        )
+    conn.close()
 
 def save_analysis_results(results: Dict[str, Any], gui_settings: Dict[str, Any]) -> int | None:
     """Guarda los resultados de un análisis.

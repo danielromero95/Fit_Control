@@ -44,3 +44,10 @@ QLineEdit, QSpinBox, QComboBox {
 QCheckBox {
   spacing: 6px;
 }
+QListWidget::item {
+  padding: 5px;
+  border-radius: 3px;
+}
+QListWidget::item:hover {
+  background-color: #f0f0f0;
+}
