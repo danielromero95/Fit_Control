@@ -83,3 +83,46 @@ QLabel#kpiSubtitle {
     font-size: 9pt;
     color: #718096;
 }
+
+/* Contenedor principal del calendario personalizado */
+CustomCalendarWidget {
+    background-color: transparent;
+}
+
+/* Cabecera de navegación (Mes y Año) */
+QLabel#calendarHeader {
+    font-size: 16pt;
+    font-weight: bold;
+    color: #E2E8F0;
+}
+
+/* Botones de navegación del calendario */
+QPushButton#calendarNavButton {
+    background-color: #4A5568;
+    border-radius: 15px;
+    font-size: 14pt;
+    min-width: 30px;
+    max-width: 30px;
+}
+
+/* Celda de un día del calendario */
+DayCellWidget {
+    background-color: transparent;
+    border: none;
+}
+
+DayCellWidget QLabel {
+    font-size: 10pt;
+    font-weight: bold;
+    color: #CBD5E0;
+}
+
+DayCellWidget[isCurrentMonth="false"] QLabel {
+    color: #4A5568;
+}
+
+DayCellWidget[isToday="true"] QLabel {
+    background-color: #3182CE;
+    color: white;
+    border-radius: 13px;
+}
