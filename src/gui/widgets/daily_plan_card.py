@@ -84,18 +84,20 @@ class DailyPlanCard(QWidget):
         summary_layout.setContentsMargins(0, 0, 0, 0)
         summary_layout.setSpacing(4)
         self.count_icon_lbl = QLabel()
-        self.count_icon_lbl.setPixmap(qta.icon("fa5s.dumbbell").pixmap(14, 14))
-        summary_layout.addWidget(self.count_icon_lbl)
         self.count_lbl = QLabel("")
-        self.count_lbl.setObjectName("planSubtitle")
+        self.count_lbl.setObjectName("planInfo")
+        summary_layout.addWidget(self.count_icon_lbl)
         summary_layout.addWidget(self.count_lbl)
         self.time_icon_lbl = QLabel()
-        self.time_icon_lbl.setPixmap(qta.icon("fa5s.clock").pixmap(14, 14))
-        summary_layout.addWidget(self.time_icon_lbl)
         self.time_lbl = QLabel("")
-        self.time_lbl.setObjectName("planSubtitle")
+        self.time_lbl.setObjectName("planInfo")
+        summary_layout.addWidget(self.time_icon_lbl)
         summary_layout.addWidget(self.time_lbl)
         header_layout.addLayout(summary_layout)
+
+        color = self.property("summaryIconColor") or "#A0AEC0"
+        self.count_icon_lbl.setPixmap(qta.icon("fa5s.dumbbell", color=color).pixmap(14, 14))
+        self.time_icon_lbl.setPixmap(qta.icon("fa5s.clock", color=color).pixmap(14, 14))
 
         main_layout.addLayout(header_layout)
 
@@ -108,6 +110,10 @@ class DailyPlanCard(QWidget):
         self.exercises_layout = QVBoxLayout()
         self.exercises_layout.setSpacing(8)
         main_layout.addLayout(self.exercises_layout)
+
+        self.rest_label = QLabel("Descanso. No hay entrenamiento para hoy.")
+        main_layout.addWidget(self.rest_label)
+        self.rest_label.hide()
 
         self.start_btn = QPushButton("Empezar Entrenamiento")
         self.start_btn.setObjectName("startTrainingButton")
@@ -126,14 +132,22 @@ class DailyPlanCard(QWidget):
                 item.widget().deleteLater()
 
         exercises_list = list(exercises)
-        if not exercises_list:
-            lbl = QLabel("Descanso. No hay entrenamiento para hoy.")
-            self.exercises_layout.addWidget(lbl)
+        has_exercises = bool(exercises_list)
+        self.start_btn.setVisible(has_exercises)
+        self.rest_label.setVisible(not has_exercises)
+        self.setProperty("isRestDay", not has_exercises)
+        self.style().unpolish(self)
+        self.style().polish(self)
+        if not has_exercises:
             self.count_lbl.setText("")
             self.time_lbl.setText("")
             self.progress_bar.setValue(0)
             self.start_btn.setEnabled(False)
             return
+
+        color = self.property("summaryIconColor") or "#A0AEC0"
+        self.count_icon_lbl.setPixmap(qta.icon("fa5s.dumbbell", color=color).pixmap(14, 14))
+        self.time_icon_lbl.setPixmap(qta.icon("fa5s.clock", color=color).pixmap(14, 14))
 
         self.count_lbl.setText(f"{len(exercises_list)} ejercicios")
         # Duración estimada simple: 5 min calentamiento + 5 min por ejercicio
