@@ -21,6 +21,10 @@ from typing import Dict, Any, Optional
 
 import qtawesome as qta
 
+# Colors used for navigation icons in light and dark themes
+LIGHT_ICON_COLOR = "#2B6CB0"
+DARK_ICON_COLOR = "#FFB74D"
+
 import src.constants as app_constants
 from src.gui.style_utils import load_stylesheet
 from src.gui.worker import AnalysisWorker
@@ -57,6 +61,9 @@ class MainWindow(QMainWindow):
         self.translator = translator
         self.video_path: Optional[str] = None
         self.gui_settings: Dict[str, Any] = {}
+
+        # Track current theme
+        self._is_dark_theme: bool = True
         
         # QSettings se usa para guardar y cargar las preferencias del usuario entre sesiones.
         self.q_settings = QSettings(app_constants.ORGANIZATION_NAME, app_constants.APP_NAME)
@@ -155,7 +162,8 @@ class MainWindow(QMainWindow):
     def _create_nav_button(self, icon_name: str, text: str, page_index: int, tooltip: str) -> QPushButton:
         btn = QPushButton(text)
         btn.setObjectName("navButton")
-        btn.setIcon(qta.icon(icon_name))
+        btn.setIcon(qta.icon(icon_name, color=LIGHT_ICON_COLOR))
+        btn._icon_name = icon_name  # Store for theme updates
         btn.setCheckable(True)
         btn.setToolTip(tooltip)
         btn.setStyleSheet("text-align: left; padding-left: 10px;")
@@ -163,6 +171,14 @@ class MainWindow(QMainWindow):
         btn.clicked.connect(lambda _: self._navigate(page_index))
         self.nav_layout.addWidget(btn)
         return btn
+
+    def _update_nav_icons(self, is_dark: bool) -> None:
+        """Repaint navigation icons according to the active theme."""
+        color = DARK_ICON_COLOR if is_dark else LIGHT_ICON_COLOR
+        for btn in getattr(self, "nav_buttons", []):
+            icon_name = getattr(btn, "_icon_name", None)
+            if icon_name:
+                btn.setIcon(qta.icon(icon_name, color=color))
 
     def _on_exercise_selected(self, exercise_id: int) -> None:
         """Carga el detalle del ejercicio seleccionado y navega a la vista."""
@@ -181,9 +197,11 @@ class MainWindow(QMainWindow):
 
     def _apply_theme(self, is_dark: bool):
         """Aplica el tema actual a todos los componentes relevantes de la GUI."""
+        self._is_dark_theme = is_dark
         load_stylesheet(QApplication.instance(), self.project_root, dark=is_dark)
         if hasattr(self, 'progress_page'):
             self.progress_page.set_theme(is_dark)
+        self._update_nav_icons(is_dark)
 
     def _on_video_selected(self, path: str):
         """
