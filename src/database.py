@@ -136,6 +136,28 @@ def get_all_training_plans() -> list:
     rows = conn.execute("SELECT * FROM training_plans ORDER BY timestamp DESC").fetchall()
     conn.close()
     return [dict(row) for row in rows]
+
+def save_training_plan(title: str, plan_content_md: str) -> int:
+    """Guarda un nuevo plan de entrenamiento y devuelve su ID."""
+    conn = get_db_connection()
+    with conn:
+        cur = conn.execute(
+            "INSERT INTO training_plans(title, timestamp, plan_content_md) VALUES (?, ?, ?)",
+            (title, datetime.utcnow().isoformat(), plan_content_md),
+        )
+        plan_id = cur.lastrowid
+    conn.close()
+    return int(plan_id)
+
+def get_plan_by_id(plan_id: int) -> Dict[str, Any] | None:
+    """Obtiene un plan de entrenamiento por su ID."""
+    conn = get_db_connection()
+    row = conn.execute(
+        "SELECT * FROM training_plans WHERE id = ?",
+        (plan_id,),
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None
     
 def get_logs_for_exercise(exercise_id: int) -> List[Dict[str, Any]]:
     conn = get_db_connection()

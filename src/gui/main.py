@@ -17,6 +17,8 @@ from PyQt5.QtWidgets import QApplication
 from src.i18n.translator import Translator
 
 from src import database
+from src.database import save_training_plan
+from src.gui.pages.plans_page import sample_plan
 
 # Instancia global del traductor
 _TRANSLATIONS_PATH = os.path.join(os.path.dirname(__file__), '..', 'i18n', 'es.json')
@@ -49,6 +51,31 @@ def setup_logging(project_root: str):
     logging.getLogger('tflite_runtime').setLevel(logging.ERROR)
     logging.getLogger('mediapipe').setLevel(logging.ERROR)
 
+
+def _plan_dict_to_markdown(plan: dict) -> str:
+    """Convierte un plan dict a Markdown simple."""
+    lines = []
+    for day in plan.get("days", []):
+        lines.append(f"### {day.get('day_name', '')}")
+        exercises = day.get("exercises", [])
+        if not exercises:
+            lines.append("Descanso")
+        else:
+            for ex in exercises:
+                lines.append(f"- {ex.get('name')} {ex.get('detail')}")
+        lines.append("")
+    return "\n".join(lines)
+
+
+def _ensure_active_plan() -> None:
+    """Guarda el plan de ejemplo como activo si no existe otro."""
+    if database.get_active_plan_id() is not None:
+        return
+
+    md = _plan_dict_to_markdown(sample_plan)
+    plan_id = save_training_plan(sample_plan["plan_name"], md)
+    database.set_app_state("active_plan_id", str(plan_id))
+
 def run_app():
     # Determina la raíz del proyecto buscando la carpeta gym-performance-analysis
     PROJECT_ROOT = find_project_root()
@@ -58,6 +85,7 @@ def run_app():
     logging.info("Arrancando Gym Performance Analyzer")
 
     database.init_db()
+    _ensure_active_plan()
 
     app = QApplication(sys.argv)
     # No forzamos aquí el tema: _apply_theme del MainWindow leerá el checkbox

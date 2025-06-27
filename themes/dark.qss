@@ -301,6 +301,22 @@ QPushButton#CollapsibleHeader:hover {
     color: #FFFFFF;
 }
 
+QWidget#planScrollContainer {
+    background-color: #1E2530;
+    border-radius: 6px;
+    padding: 8px;
+}
+
+QPushButton#PrimaryCTAButton {
+    background-color: #2B6CB0;
+    color: #FFFFFF;
+    font-weight: bold;
+}
+
+QPushButton#PrimaryCTAButton:hover {
+    background-color: #3C82D8;
+}
+
 QWidget#GridContentContainer {
     border-top: 1px solid #4A5568;
     background-color: transparent;
