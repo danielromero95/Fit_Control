@@ -8,7 +8,10 @@ logger = logging.getLogger(__name__)
 
 # --- Conexión a la Base de Datos ---
 def get_db_connection() -> sqlite3.Connection:
-    conn = sqlite3.connect("database.db")
+    """Devuelve una conexión a la base de datos utilizando la ruta global."""
+    from src.constants import DB_PATH
+
+    conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -206,5 +209,3 @@ def get_app_state(key: str) -> str | None:
     row = conn.execute("SELECT value FROM app_state WHERE key = ?", (key,)).fetchone()
     conn.close()
     return row["value"] if row else None
-
-# (He añadido todas las funciones que faltaban. Si aparece algún otro error, sería muy extraño)
