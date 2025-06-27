@@ -205,7 +205,6 @@ DailyPlanCard {
     border: 1px solid #4A5568;
     border-radius: 8px;
     padding: 10px;
-    qproperty-summaryIconColor: #A0AEC0;
 }
 
 QLabel#planTitle {
