@@ -1,46 +1,77 @@
+from __future__ import annotations
+
 from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
-    QHBoxLayout,
+    QScrollArea,
+    QLabel,
+    QPushButton,
     QFormLayout,
     QComboBox,
     QSpinBox,
     QLineEdit,
     QTextEdit,
-    QPushButton,
-    QListWidget,
-    QListWidgetItem,
-    QInputDialog,
-    QLabel,
     QStackedWidget,
+    QDialog,
+    QMessageBox,
 )
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QMovie, QColor
-from PyQt5.QtWidgets import QMessageBox
-from datetime import datetime
+from PyQt5.QtGui import QMovie
 
+from ..widgets.daily_plan_card import DailyPlanCard
 from ...services.plan_generator import PlanGeneratorWorker
 from ... import database
 
-# The translator instance is provided by the MainWindow when constructing
-# this page to avoid circular imports with src.gui.main
+
+# ---------------------------------------------------------------------------
+# Ejemplo de estructura de datos para un plan
+sample_plan = {
+    "plan_name": "Hipertrofia Clásica - 3 Días",
+    "days": [
+        {
+            "day_name": "Lunes: Tirón (Pull)",
+            "exercises": [
+                {"name": "Dominadas", "detail": "4x8-12"},
+                {"name": "Remo con Barra", "detail": "3x8-10"},
+                {"name": "Face Pull", "detail": "3x15-20"},
+            ],
+        },
+        {"day_name": "Martes: Descanso", "exercises": []},
+        {
+            "day_name": "Miércoles: Empuje (Push)",
+            "exercises": [
+                {"name": "Press de Banca", "detail": "4x8-12"},
+                {"name": "Press Militar con Barra", "detail": "3x8-10"},
+                {"name": "Fondos en Paralelas", "detail": "3xAl fallo"},
+            ],
+        },
+        {"day_name": "Jueves: Descanso", "exercises": []},
+        {
+            "day_name": "Viernes: Piernas",
+            "exercises": [
+                {"name": "Sentadilla", "detail": "4x8-12"},
+                {"name": "Peso Muerto", "detail": "3x6-8"},
+                {"name": "Prensa", "detail": "3x10-12"},
+            ],
+        },
+        {"day_name": "Sábado: Descanso", "exercises": []},
+        {"day_name": "Domingo: Descanso", "exercises": []},
+    ],
+}
 
 
-class PlansPage(QWidget):
-    """Página para generar planes de entrenamiento personalizados."""
+# ---------------------------------------------------------------------------
+class PlanGeneratorDialog(QDialog):
+    """Diálogo para generar un nuevo plan de entrenamiento."""
 
     def __init__(self, translator, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.translator = translator
+        self.setWindowTitle(self.translator.tr("generate_plan"))
 
-        main_layout = QHBoxLayout(self)
-
-        # ----- Left column -----
-        left_widget = QWidget()
-        left_layout = QVBoxLayout(left_widget)
+        layout = QVBoxLayout(self)
 
         form_layout = QFormLayout()
-
         self.objetivo_cb = QComboBox()
         self.objetivo_cb.addItems(
             [
@@ -64,19 +95,10 @@ class PlansPage(QWidget):
         self.enfoque_le = QLineEdit()
         form_layout.addRow("Grupos Musculares (Opcional):", self.enfoque_le)
 
-        left_layout.addLayout(form_layout)
+        layout.addLayout(form_layout)
 
-        self.saved_plans_list = QListWidget()
-        left_layout.addWidget(self.saved_plans_list, 1)
-
-        self.refresh_btn = QPushButton("Actualizar Lista")
-        left_layout.addWidget(self.refresh_btn)
-
-        main_layout.addWidget(left_widget)
-
-        # ----- Right column -----
-        right_widget = QWidget()
-        right_layout = QVBoxLayout(right_widget)
+        self.generate_btn = QPushButton(self.translator.tr("generate_plan"))
+        layout.addWidget(self.generate_btn)
 
         self.results_stack = QStackedWidget()
         self.results_text_edit = QTextEdit()
@@ -92,35 +114,13 @@ class PlansPage(QWidget):
         self.loading_label.setMovie(self.loading_movie)
         self.results_stack.addWidget(self.loading_label)
 
-        right_layout.addWidget(self.results_stack, 1)
-
-        self.save_plan_btn = QPushButton(self.translator.tr("save_plan"))
-        self.save_plan_btn.setEnabled(False)
-        self.save_plan_btn.setToolTip("Guardar el plan mostrado en tu historial")
-        right_layout.addWidget(self.save_plan_btn)
-
-        self.set_active_btn = QPushButton("Establecer como Plan Activo")
-        self.set_active_btn.setEnabled(False)
-        self.set_active_btn.setToolTip(self.translator.tr("active_plan_tooltip"))
-        right_layout.addWidget(self.set_active_btn)
-
-        self.generate_btn = QPushButton(self.translator.tr("generate_plan"))
-        self.generate_btn.setToolTip("Generar un nuevo plan de entrenamiento con IA")
-        self.generate_btn.clicked.connect(self.on_generate_plan_clicked)
-        left_layout.addWidget(self.generate_btn)
-
-        main_layout.addWidget(right_widget, 1)
+        layout.addWidget(self.results_stack, 1)
 
         self.worker = None
+        self.generate_btn.clicked.connect(self.on_generate_plan_clicked)
 
-        self.refresh_btn.clicked.connect(self.refresh_saved_plans)
-        self.save_plan_btn.clicked.connect(self.on_save_plan_clicked)
-        self.set_active_btn.clicked.connect(self.on_set_active_plan)
-        self.saved_plans_list.itemClicked.connect(self.on_saved_plan_selected)
-        self.refresh_saved_plans()
-
+    # --------------------------------------------------
     def on_generate_plan_clicked(self) -> None:
-        """Inicia la generación de planes en un hilo separado."""
         objetivo = self.objetivo_cb.currentText()
         dias = self.dias_sb.value()
         nivel = self.nivel_cb.currentText()
@@ -140,63 +140,93 @@ class PlansPage(QWidget):
         self.loading_movie.stop()
         self.results_stack.setCurrentWidget(self.results_text_edit)
         self.results_text_edit.setMarkdown(plan_text)
-        self.save_plan_btn.setEnabled(True)
 
     def on_plan_generation_error(self, error_message: str) -> None:
         self.generate_btn.setEnabled(True)
         self.loading_movie.stop()
         self.results_stack.setCurrentWidget(self.results_text_edit)
+        self.results_text_edit.setPlainText("")
         QMessageBox.critical(self, "Error generando plan", error_message)
 
-    def refresh_saved_plans(self) -> None:
-        """Carga los planes almacenados en la base de datos."""
-        self.saved_plans_list.clear()
-        rows = database.get_all_training_plans()
-        active_plan_id = database.get_active_plan_id()
-        for row in rows:
-            try:
-                ts = datetime.fromisoformat(row["timestamp"])
-                formatted = ts.strftime("%d %b %Y - %H:%M")
-            except Exception:
-                formatted = row["timestamp"]
-            item_text = f"{row['title']} - {formatted}"
-            item = QListWidgetItem(item_text)
-            item.setData(Qt.UserRole, row["id"])
-            if active_plan_id is not None and row["id"] == active_plan_id:
-                item.setBackground(QColor("#5a9"))
-            self.saved_plans_list.addItem(item)
-        self.set_active_btn.setEnabled(self.saved_plans_list.count() > 0)
 
-    def on_save_plan_clicked(self) -> None:
-        """Solicita un título y guarda el plan actual."""
-        if not self.results_text_edit.toPlainText().strip():
-            return
-        title, ok = QInputDialog.getText(self, "Guardar Plan", "Título del plan:")
-        if ok and title.strip():
-            database.save_training_plan(title.strip(), self.results_text_edit.toMarkdown())
-            self.save_plan_btn.setEnabled(False)
-            window = self.window()
-            if hasattr(window, "statusBar"):
-                window.statusBar().showMessage("Plan guardado", 5000)
-            self.refresh_saved_plans()
+# ---------------------------------------------------------------------------
+class PlansPage(QWidget):
+    """Página que muestra el plan de entrenamiento activo."""
 
-    def on_saved_plan_selected(self, item: QListWidgetItem) -> None:
-        plan_id = item.data(Qt.UserRole)
-        row = database.get_plan_by_id(int(plan_id))
-        if row:
-            self.results_text_edit.setMarkdown(row.get("plan_content_md", ""))
-            self.save_plan_btn.setEnabled(False)
-        self.set_active_btn.setEnabled(True)
+    def __init__(self, translator, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.translator = translator
 
-    def on_set_active_plan(self) -> None:
-        """Establece el plan seleccionado como activo en el estado global."""
-        item = self.saved_plans_list.currentItem()
-        if not item:
-            return
-        plan_id = item.data(Qt.UserRole)
-        database.set_app_state("active_plan_id", str(plan_id))
-        window = self.window()
-        if hasattr(window, "statusBar"):
-            window.statusBar().showMessage("Plan activo actualizado", 5000)
-        self.refresh_saved_plans()
+        layout = QVBoxLayout(self)
+        layout.setSpacing(10)
 
+        plan_dict = self._load_active_plan_dict()
+
+        title = QLabel(f"Plan Activo: {plan_dict['plan_name']}")
+        title.setObjectName("planTitle")
+        layout.addWidget(title)
+
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        layout.addWidget(self.scroll_area, 1)
+
+        container = QWidget()
+        container.setObjectName("planScrollContainer")
+        self.scroll_layout = QVBoxLayout(container)
+        self.scroll_layout.setSpacing(15)
+        self.scroll_area.setWidget(container)
+
+        for day in plan_dict["days"]:
+            card = DailyPlanCard()
+            card.title_lbl.setText(day["day_name"])
+            exercises = [
+                (ex["name"], ex["detail"]) for ex in day.get("exercises", [])
+            ]
+            card.update_plan(exercises)
+            self.scroll_layout.addWidget(card)
+
+        self.scroll_layout.addStretch(1)
+
+        self.new_plan_btn = QPushButton("Generar Nuevo Plan")
+        self.new_plan_btn.setObjectName("PrimaryCTAButton")
+        self.new_plan_btn.clicked.connect(self._open_generator_dialog)
+        layout.addWidget(self.new_plan_btn)
+
+    # --------------------------------------------------
+    def _open_generator_dialog(self) -> None:
+        dlg = PlanGeneratorDialog(self.translator, self)
+        dlg.exec_()
+
+    # --------------------------------------------------
+    def _parse_plan_md(self, md: str) -> dict:
+        plan: dict[str, list[dict[str, str]]] = {"plan_name": "", "days": []}
+        current_day: dict | None = None
+        for line in md.splitlines():
+            if line.startswith("### "):
+                current_day = {"day_name": line[4:].strip(), "exercises": []}
+                plan["days"].append(current_day)
+                continue
+            if current_day is None or not line.strip():
+                continue
+            if line.lower().startswith("descanso"):
+                current_day["exercises"] = []
+                continue
+            if line.startswith("- "):
+                text = line[2:].strip()
+                parts = text.rsplit(" ", 1)
+                if len(parts) == 2:
+                    name, detail = parts
+                else:
+                    name, detail = text, ""
+                current_day["exercises"].append({"name": name, "detail": detail})
+        return plan
+
+    def _load_active_plan_dict(self) -> dict:
+        plan_id = database.get_active_plan_id()
+        if plan_id is not None:
+            row = database.get_plan_by_id(plan_id)
+            if row and row.get("plan_content_md"):
+                plan = self._parse_plan_md(row["plan_content_md"])
+                plan["plan_name"] = row.get("title", "")
+                return plan
+        return sample_plan

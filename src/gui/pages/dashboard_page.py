@@ -8,6 +8,7 @@ from PyQt5.QtCore import QDate, pyqtSignal
 
 from src.gui.widgets.custom_calendar_widget import CustomCalendarWidget
 from src.gui.widgets.daily_plan_card import DailyPlanCard
+from src import database
 
 
 class DashboardPage(QWidget):
@@ -30,43 +31,16 @@ class DashboardPage(QWidget):
 
         self.calendar.date_selected.connect(self._on_date_selected)
 
-        self._plan_data = self._parse_example_plan()
+        self._plan_data = self._load_active_plan()
         self._on_date_selected(QDate.currentDate())
 
     def refresh_dashboard(self) -> None:
-        """Refresca la tarjeta del plan para la fecha seleccionada."""
+        """Vuelve a cargar el plan activo y refresca la vista."""
+        self._plan_data = self._load_active_plan()
         self._on_date_selected(QDate.currentDate())
 
-    def _parse_example_plan(self) -> dict[str, list[tuple[str, str]]]:
-        """Parsea un plan de ejemplo simple para cada día."""
-
-        plan_md = """
-### Lunes
-- Sentadillas 3x10
-- Press de banca 3x8
-
-### Martes
-- Dominadas 4x6
-- Curl de bíceps 3x12
-
-### Miércoles
-Descanso
-
-### Jueves
-- Peso muerto 5x5
-- Remo con barra 3x8
-
-### Viernes
-- Press militar 4x6
-- Fondos en paralelas 3x10
-
-### Sábado
-- Cardio ligero 30 minutos
-
-### Domingo
-Descanso
-"""
-
+    def _parse_plan_md(self, plan_md: str) -> dict[str, list[tuple[str, str]]]:
+        """Convierte Markdown en un diccionario de plan semanal."""
         plan: dict[str, list[tuple[str, str]]] = {}
         current_day: str | None = None
         for line in plan_md.splitlines():
@@ -87,6 +61,14 @@ Descanso
                 else:
                     plan[current_day].append((text, ""))
         return plan
+
+    def _load_active_plan(self) -> dict[str, list[tuple[str, str]]]:
+        plan_id = database.get_active_plan_id()
+        if plan_id is not None:
+            row = database.get_plan_by_id(plan_id)
+            if row and row.get("plan_content_md"):
+                return self._parse_plan_md(row["plan_content_md"])
+        return self._parse_plan_md("")
 
     def _on_date_selected(self, date: QDate) -> None:
         day_names = {
