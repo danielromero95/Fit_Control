@@ -71,13 +71,36 @@ def populate_initial_exercises() -> None:
     logger.info("Base de datos de ejercicios vacía. Poblando con datos iniciales...")
     
     exercises = [
+        # Pecho
         {"name": "Bench Press", "muscle_group": "Pecho", "equipment": "Barra", "icon_path": "assets/exercises/chest/bench_press_icon.png", "image_full_path": "assets/exercises/chest/bench_press_full.png"},
-        {"name": "Bicep Curl with Bar", "muscle_group": "Brazos", "equipment": "Barra", "icon_path": "assets/exercises/arms/bicep_curl_with_bar_icon.png", "image_full_path": "assets/exercises/arms/bicep_curl_with_bar_full.png"},
-        {"name": "Tricep Extensions", "muscle_group": "Brazos", "equipment": "Poleas", "icon_path": "assets/exercises/arms/tricep_extensions_icon.png", "image_full_path": "assets/exercises/arms/tricep_extensions_full.png"},
-        {"name": "Reverse Curls with Bar", "muscle_group": "Brazos", "equipment": "Barra", "icon_path": "assets/exercises/arms/reverse_curls_with_bar_icon.png", "image_full_path": "assets/exercises/arms/reverse_curls_with_bar_full.png"},
-        {"name": "Underhand Kickbacks", "muscle_group": "Brazos", "equipment": "Mancuernas", "icon_path": "assets/exercises/arms/underhand_kickbacks_icon.png", "image_full_path": "assets/exercises/arms/underhand_kickbacks_full.png"},
-        {"name": "Standing Dumbbell Fly", "muscle_group": "Hombros", "equipment": "Mancuernas", "icon_path": "assets/exercises/shoulders/standing_dumbbell_fly_icon.png", "image_full_path": "assets/exercises/shoulders/standing_dumbbell_fly_full.png"},
+
+        # Espalda
+        {"name": "Neutral Grip Pull-up", "muscle_group": "Espalda", "equipment": "Peso Corporal", "icon_path": "assets/exercises/back/neutral_grip_pull_up_icon.png", "image_full_path": "assets/exercises/back/neutral_grip_pull_up_full.png"},
+        {"name": "Machine Seated Row", "muscle_group": "Espalda", "equipment": "Máquina", "icon_path": "assets/exercises/back/machine_seated_row_icon.png", "image_full_path": "assets/exercises/back/machine_seated_row_full.png"},
+        {"name": "Close-Grip Cable Row", "muscle_group": "Espalda", "equipment": "Poleas", "icon_path": "assets/exercises/back/close_grip_cable_row_icon.png", "image_full_path": "assets/exercises/back/close_grip_cable_row_full.png"},
+        {"name": "Close-Grip Lat Pulldown", "muscle_group": "Espalda", "equipment": "Poleas", "icon_path": "assets/exercises/back/close_grip_lat_pulldown_icon.png", "image_full_path": "assets/exercises/back/close_grip_lat_pulldown_full.png"},
+        {"name": "Behind The Neck Lat Pulldown", "muscle_group": "Espalda", "equipment": "Poleas", "icon_path": "assets/exercises/back/behind_the_neck_lat_pulldown_icon.png", "image_full_path": "assets/exercises/back/behind_the_neck_lat_pulldown_full.png"},
         {"name": "Wide Grip Overhand Lat Pulldown", "muscle_group": "Espalda", "equipment": "Poleas", "icon_path": "assets/exercises/back/wide_grip_overhand_lat_pulldown_icon.png", "image_full_path": "assets/exercises/back/wide_grip_overhand_lat_pulldown_full.png"},
+
+        # Brazos (Bíceps)
+        {"name": "Standing Barbell Curl", "muscle_group": "Brazos", "equipment": "Barra", "icon_path": "assets/exercises/biceps/standing_barbell_curl_icon.png", "image_full_path": "assets/exercises/biceps/standing_barbell_curl_full.png"},
+        {"name": "Machine Preacher Curl", "muscle_group": "Brazos", "equipment": "Máquina", "icon_path": "assets/exercises/biceps/machine_preacher_curl_icon.png", "image_full_path": "assets/exercises/biceps/machine_preacher_curl_full.png"},
+        {"name": "Incline Dumbbell Curl", "muscle_group": "Brazos", "equipment": "Mancuernas", "icon_path": "assets/exercises/biceps/incline_dumbbell_curl_icon.png", "image_full_path": "assets/exercises/biceps/incline_dumbbell_curl_full.png"},
+        {"name": "Dumbbell Scott Curl", "muscle_group": "Brazos", "equipment": "Mancuernas", "icon_path": "assets/exercises/biceps/dumbbell_scott_curl_icon.png", "image_full_path": "assets/exercises/biceps/dumbbell_scott_curl_full.png"},
+        {"name": "Overhead Cable Curl", "muscle_group": "Brazos", "equipment": "Poleas", "icon_path": "assets/exercises/biceps/overhead_cable_curl_icon.png", "image_full_path": "assets/exercises/biceps/overhead_cable_curl_full.png"},
+        {"name": "Standing Dumbbell Curl", "muscle_group": "Brazos", "equipment": "Mancuernas", "icon_path": "assets/exercises/biceps/standing_dumbbell_curl_icon.png", "image_full_path": "assets/exercises/biceps/standing_dumbbell_curl_full.png"},
+        {"name": "Concentration Curl", "muscle_group": "Brazos", "equipment": "Mancuernas", "icon_path": "assets/exercises/biceps/concentration_curl_icon.png", "image_full_path": "assets/exercises/biceps/concentration_curl_full.png"},
+        {"name": "Dumbbell Hammer Curl", "muscle_group": "Brazos", "equipment": "Mancuernas", "icon_path": "assets/exercises/biceps/dumbbell_hammer_curl_icon.png", "image_full_path": "assets/exercises/biceps/dumbbell_hammer_curl_full.png"},
+        {"name": "Incline Barbell Curl", "muscle_group": "Brazos", "equipment": "Barra", "icon_path": "assets/exercises/biceps/incline_barbell_curl_icon.png", "image_full_path": "assets/exercises/biceps/incline_barbell_curl_full.png"},
+
+        # Brazos (Tríceps)
+        {"name": "Tricep Extensions", "muscle_group": "Brazos", "equipment": "Poleas", "icon_path": "assets/exercises/triceps/tricep_extensions_icon.png", "image_full_path": "assets/exercises/triceps/tricep_extensions_full.png"},
+        {"name": "Underhand Kickbacks", "muscle_group": "Brazos", "equipment": "Mancuernas", "icon_path": "assets/exercises/triceps/underhand_kickbacks_icon.png", "image_full_path": "assets/exercises/triceps/underhand_kickbacks_full.png"},
+
+        # Hombros
+        {"name": "Standing Dumbbell Fly", "muscle_group": "Hombros", "equipment": "Mancuernas", "icon_path": "assets/exercises/shoulders/standing_dumbbell_fly_icon.png", "image_full_path": "assets/exercises/shoulders/standing_dumbbell_fly_full.png"},
+
+        # Piernas
         {"name": "Squat", "muscle_group": "Piernas", "equipment": "Barra", "icon_path": "assets/exercises/legs/squat_icon.png", "image_full_path": "assets/exercises/legs/squat_full.png"},
     ]
 
