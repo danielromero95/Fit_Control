@@ -34,6 +34,7 @@ from .pages import (
     ProgressPage,
     SettingsPage,
     ContactPage,
+    WebCalendarPage,
 )
 
 logger = logging.getLogger(__name__)
@@ -110,7 +111,10 @@ class MainWindow(QMainWindow):
         )
         self.progress_page = ProgressPage()
         self.results_panel = self.progress_page.results_panel
-        self.plans_page = PlansPage(self.translator)
+        calendar_html_path = os.path.join(
+            self.project_root, "frontend", "index.html"
+        )
+        self.plans_page = WebCalendarPage(os.path.abspath(calendar_html_path))
         self.plans_page.exercise_selected.connect(self._on_exercise_by_name)
         self.settings_page = SettingsPage(self._apply_theme)
         self.contact_page = ContactPage()
