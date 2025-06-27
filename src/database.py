@@ -77,7 +77,7 @@ def populate_initial_exercises() -> None:
         {"name": "Reverse Curls with Bar", "muscle_group": "Brazos", "equipment": "Barra", "icon_path": "assets/exercises/arms/reverse_curls_with_bar_icon.png", "image_full_path": "assets/exercises/arms/reverse_curls_with_bar_full.png"},
         {"name": "Underhand Kickbacks", "muscle_group": "Brazos", "equipment": "Mancuernas", "icon_path": "assets/exercises/arms/underhand_kickbacks_icon.png", "image_full_path": "assets/exercises/arms/underhand_kickbacks_full.png"},
         {"name": "Standing Dumbbell Fly", "muscle_group": "Hombros", "equipment": "Mancuernas", "icon_path": "assets/exercises/shoulders/standing_dumbbell_fly_icon.png", "image_full_path": "assets/exercises/shoulders/standing_dumbbell_fly_full.png"},
-        {"name": "Lat Pulldown", "muscle_group": "Espalda", "equipment": "Poleas", "icon_path": "assets/exercises/back/lat_pulldown_icon.png", "image_full_path": "assets/exercises/back/lat_pulldown_full.png"},
+        {"name": "Wide Grip Overhand Lat Pulldown", "muscle_group": "Espalda", "equipment": "Poleas", "icon_path": "assets/exercises/back/wide_grip_overhand_lat_pulldown_icon.png", "image_full_path": "assets/exercises/back/wide_grip_overhand_lat_pulldown_full.png"},
         {"name": "Squat", "muscle_group": "Piernas", "equipment": "Barra", "icon_path": "assets/exercises/legs/squat_icon.png", "image_full_path": "assets/exercises/legs/squat_full.png"},
     ]
 
