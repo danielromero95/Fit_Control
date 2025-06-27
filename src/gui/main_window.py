@@ -38,6 +38,11 @@ from .pages import (
 
 logger = logging.getLogger(__name__)
 
+THEME_COLORS = {
+    "dark": {"default": "#FFB74D", "checked": "#FFFFFF"},
+    "light": {"default": "#FFFFFF", "checked": "#FFB74D"},
+}
+
 class MainWindow(QMainWindow):
     """
     Ventana principal de la aplicación. Orquesta todos los widgets y la interacción
@@ -172,13 +177,12 @@ class MainWindow(QMainWindow):
         return btn
 
     def _update_nav_icons(self) -> None:
-        """Repaint navigation icons using colors defined in the active theme."""
-        default_color = self.nav_widget.property("iconColor")
-        checked_color = self.nav_widget.property("iconColorChecked")
+        """Repaint navigation icons using the centralized theme color config."""
+        theme_name = "dark" if self._is_dark_theme else "light"
+        colors = THEME_COLORS[theme_name]
 
-        if not default_color or not checked_color:
-            default_color = "#FFFFFF"
-            checked_color = "#FFB74D"
+        default_color = colors["default"]
+        checked_color = colors["checked"]
 
         for btn in getattr(self, "nav_buttons", []):
             icon_name = btn.property("icon_name")
@@ -206,7 +210,7 @@ class MainWindow(QMainWindow):
         self._is_dark_theme = is_dark
         load_stylesheet(QApplication.instance(), self.project_root, dark=is_dark)
 
-        # After applying the theme the nav_widget has updated properties
+        # Refresh icons with new theme colors
         self._update_nav_icons()
 
         if hasattr(self, 'progress_page'):
