@@ -40,6 +40,7 @@ class Workout(models.Model):
         return f"Entrenamiento del {self.workout_date.strftime('%d-%m-%Y')}"
 
     class Meta:
+        # Order workouts by date descending (newest first)
         ordering = ['-workout_date']
 
 
