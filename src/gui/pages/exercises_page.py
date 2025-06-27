@@ -2,7 +2,7 @@ import os
 from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
-    QComboBox,
+    QLineEdit,
     QScrollArea,
     QGridLayout,
     QApplication,
@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QPushButton,
 )
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtGui import QMovie
 from pathlib import Path
 
@@ -32,13 +32,16 @@ class ExercisesPage(QWidget):
         layout = QVBoxLayout(self)
 
         controls_layout = QHBoxLayout()
-        self.group_combo = QComboBox()
-        controls_layout.addWidget(self.group_combo)
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Buscar ejercicio...")
+        self.search_input.setObjectName("exerciseSearchInput")
+        self.search_input.setClearButtonEnabled(True)
+        controls_layout.addWidget(self.search_input)
+        controls_layout.addStretch()
         self.expand_all_btn = QPushButton("Expand All")
         self.collapse_all_btn = QPushButton("Collapse All")
         controls_layout.addWidget(self.expand_all_btn)
         controls_layout.addWidget(self.collapse_all_btn)
-        controls_layout.addStretch()
         layout.addLayout(controls_layout)
 
         self.loading_label = QLabel()
@@ -52,13 +55,22 @@ class ExercisesPage(QWidget):
         self.scroll_area.setWidgetResizable(True)
         layout.addWidget(self.scroll_area, 1)
 
+        self.no_results_label = QLabel("No se encontraron ejercicios que coincidan con tu b\u00fasqueda.")
+        self.no_results_label.setAlignment(Qt.AlignCenter)
+        self.no_results_label.hide()
+        layout.addWidget(self.no_results_label)
+
         self.container = QWidget()
         self.scroll_layout = QVBoxLayout(self.container)
         self.scroll_layout.setContentsMargins(0, 0, 0, 0)
         self.scroll_layout.setSpacing(10)
         self.scroll_area.setWidget(self.container)
 
-        self.group_combo.currentTextChanged.connect(self.on_group_selected)
+        self.search_timer = QTimer(self)
+        self.search_timer.setInterval(250)
+        self.search_timer.setSingleShot(True)
+        self.search_timer.timeout.connect(lambda: self._on_search_query_changed(self.search_input.text()))
+        self.search_input.textChanged.connect(self._restart_search_timer)
         self.expand_all_btn.clicked.connect(self.expand_all)
         self.collapse_all_btn.clicked.connect(self.collapse_all)
 
@@ -69,10 +81,7 @@ class ExercisesPage(QWidget):
 
     def refresh_groups(self) -> None:
         """Carga los grupos musculares y reconstruye la vista."""
-        self.group_combo.clear()
         groups = database.get_all_muscle_groups()
-        for g in groups:
-            self.group_combo.addItem(g)
 
         self.scroll_area.hide()
         self.loading_label.show()
@@ -86,13 +95,6 @@ class ExercisesPage(QWidget):
         self.loading_label.hide()
         self.scroll_area.show()
 
-        if self.group_combo.count() > 0:
-            self.group_combo.setCurrentIndex(0)
-
-    def on_group_selected(self, group: str) -> None:
-        section = self.group_sections.get(group)
-        if section is not None:
-            self.scroll_area.ensureWidgetVisible(section, yMargin=10)
 
     def _build_sections(self, groups: list[str]) -> None:
         while self.scroll_layout.count():
@@ -168,4 +170,45 @@ class ExercisesPage(QWidget):
     def collapse_all(self) -> None:
         for section in self.group_sections.values():
             section.collapse()
+
+    # --------------------------------------------------------------
+    def _restart_search_timer(self, _text: str) -> None:
+        """Restart the debounce timer for search."""
+        self.search_timer.stop()
+        self.search_timer.start()
+
+    # --------------------------------------------------------------
+    def _on_search_query_changed(self, text: str) -> None:
+        """Filter exercise cards based on the search query."""
+        query = text.lower().strip()
+        any_section_visible = False
+        for group, info in self.section_info.items():
+            cards: list[ExerciseCardWidget] = info["cards"]  # type: ignore[assignment]
+            section = self.group_sections.get(group)
+            if section is None:
+                continue
+
+            any_visible = False
+            for card in cards:
+                name = card.raw_name.lower()
+                if query in name:
+                    card.show()
+                    card.highlight(query)
+                    any_visible = True
+                else:
+                    card.hide()
+                    card.highlight("")
+
+            if any_visible:
+                section.show()
+                any_section_visible = True
+            else:
+                section.hide()
+
+        if any_section_visible:
+            self.no_results_label.hide()
+            self.scroll_area.show()
+        else:
+            self.scroll_area.hide()
+            self.no_results_label.show()
 
