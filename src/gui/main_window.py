@@ -21,10 +21,6 @@ from typing import Dict, Any, Optional
 
 import qtawesome as qta
 
-# Colors used for navigation icons in light and dark themes
-LIGHT_ICON_COLOR = "#2B6CB0"
-DARK_ICON_COLOR = "#FFB74D"
-
 import src.constants as app_constants
 from src.gui.style_utils import load_stylesheet
 from src.gui.worker import AnalysisWorker
@@ -84,10 +80,10 @@ class MainWindow(QMainWindow):
         container = QWidget()
         main_layout = QHBoxLayout(container)
 
-        nav_widget = QWidget()
-        nav_widget.setObjectName("navPanel")
-        nav_widget.setMinimumWidth(130)
-        self.nav_layout = QVBoxLayout(nav_widget)
+        self.nav_widget = QWidget()
+        self.nav_widget.setObjectName("navPanel")
+        self.nav_widget.setMinimumWidth(130)
+        self.nav_layout = QVBoxLayout(self.nav_widget)
         self.nav_layout.setContentsMargins(0, 0, 0, 0)
         self.nav_layout.setSpacing(10)
 
@@ -140,7 +136,7 @@ class MainWindow(QMainWindow):
         contact_btn = self._create_nav_button("fa5s.info-circle", "Contacto", contact_index, "Información de contacto")
         self.nav_buttons.append(contact_btn)
 
-        main_layout.addWidget(nav_widget)
+        main_layout.addWidget(self.nav_widget)
         main_layout.addWidget(self.stack, 1)
 
         self.setCentralWidget(container)
@@ -158,12 +154,13 @@ class MainWindow(QMainWindow):
         w = self.stack.currentWidget()
         w.update()
         w.repaint()
+        self._update_nav_icons()
 
     def _create_nav_button(self, icon_name: str, text: str, page_index: int, tooltip: str) -> QPushButton:
         btn = QPushButton(text)
         btn.setObjectName("navButton")
-        btn.setIcon(qta.icon(icon_name, color=LIGHT_ICON_COLOR))
-        btn._icon_name = icon_name  # Store for theme updates
+        btn.setIcon(qta.icon(icon_name))
+        btn.setProperty("icon_name", icon_name)  # Store for theme updates
         btn.setCheckable(True)
         btn.setToolTip(tooltip)
         btn.setStyleSheet("text-align: left; padding-left: 10px;")
@@ -172,12 +169,19 @@ class MainWindow(QMainWindow):
         self.nav_layout.addWidget(btn)
         return btn
 
-    def _update_nav_icons(self, is_dark: bool) -> None:
-        """Repaint navigation icons according to the active theme."""
-        color = DARK_ICON_COLOR if is_dark else LIGHT_ICON_COLOR
+    def _update_nav_icons(self) -> None:
+        """Repaint navigation icons using colors defined in the active theme."""
+        default_color = self.nav_widget.property("iconColor")
+        checked_color = self.nav_widget.property("iconColorChecked")
+
+        if not default_color or not checked_color:
+            default_color = "#FFFFFF"
+            checked_color = "#FFB74D"
+
         for btn in getattr(self, "nav_buttons", []):
-            icon_name = getattr(btn, "_icon_name", None)
+            icon_name = btn.property("icon_name")
             if icon_name:
+                color = checked_color if btn.isChecked() else default_color
                 btn.setIcon(qta.icon(icon_name, color=color))
 
     def _on_exercise_selected(self, exercise_id: int) -> None:
@@ -199,9 +203,12 @@ class MainWindow(QMainWindow):
         """Aplica el tema actual a todos los componentes relevantes de la GUI."""
         self._is_dark_theme = is_dark
         load_stylesheet(QApplication.instance(), self.project_root, dark=is_dark)
+
+        # After applying the theme the nav_widget has updated properties
+        self._update_nav_icons()
+
         if hasattr(self, 'progress_page'):
             self.progress_page.set_theme(is_dark)
-        self._update_nav_icons(is_dark)
 
     def _on_video_selected(self, path: str):
         """
