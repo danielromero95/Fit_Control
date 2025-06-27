@@ -261,8 +261,8 @@ QWidget#ExerciseCardWidget {
 }
 
 QWidget#ExerciseCardWidget:hover {
-    border: 1px solid #3182CE; /* Borde azul de acento */
-    background-color: #354154; /* Fondo ligeramente más claro */
+    background-color: #354154; /* Un gris ligeramente más claro que el de la tarjeta */
+    border-color: #3182CE;   /* Un borde de acento azul brillante */
 }
 
 QLabel#exerciseCardName {

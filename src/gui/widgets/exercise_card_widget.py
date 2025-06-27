@@ -2,6 +2,7 @@ from __future__ import annotations
 import os
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QStyle
 from PyQt5.QtCore import Qt, pyqtSignal, QSize
+import re
 from PyQt5.QtGui import QPixmap
 
 
@@ -37,10 +38,12 @@ class ExerciseCardWidget(QWidget):
         text_layout = QVBoxLayout(text_container)
         text_layout.setContentsMargins(0, 0, 0, 0)
 
+        self.raw_name = name
         self.name_label = QLabel(name)
         self.name_label.setObjectName("exerciseCardName")
         self.name_label.setAlignment(Qt.AlignCenter)
         self.name_label.setWordWrap(True)
+        self.name_label.setTextFormat(Qt.RichText)
         text_layout.addWidget(self.name_label)
 
         if equipment:
@@ -74,6 +77,20 @@ class ExerciseCardWidget(QWidget):
                 Qt.SmoothTransformation
             )
             self.image_label.setPixmap(scaled_pixmap)
+
+    def highlight(self, term: str) -> None:
+        """Highlight occurrences of term in the exercise name."""
+        if term:
+            pattern = re.escape(term)
+            highlighted = re.sub(
+                f"({pattern})",
+                r"<b>\1</b>",
+                self.raw_name,
+                flags=re.IGNORECASE,
+            )
+            self.name_label.setText(highlighted)
+        else:
+            self.name_label.setText(self.raw_name)
 
     def mousePressEvent(self, event) -> None:
         """Emite la señal de clic."""
