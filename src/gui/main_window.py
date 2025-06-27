@@ -111,6 +111,7 @@ class MainWindow(QMainWindow):
         self.progress_page = ProgressPage()
         self.results_panel = self.progress_page.results_panel
         self.plans_page = PlansPage(self.translator)
+        self.plans_page.exercise_selected.connect(self._on_exercise_by_name)
         self.settings_page = SettingsPage(self._apply_theme)
         self.contact_page = ContactPage()
 
