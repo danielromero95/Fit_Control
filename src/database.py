@@ -6,12 +6,10 @@ from datetime import datetime
 # Configuración de logging
 logger = logging.getLogger(__name__)
 
-# --- Conexión a la Base de Datos ---
+# --- Conexión a la Base de Datos (CORREGIDA) ---
 def get_db_connection() -> sqlite3.Connection:
-    """Devuelve una conexión a la base de datos utilizando la ruta global."""
-    from src.constants import DB_PATH
-
-    conn = sqlite3.connect(DB_PATH)
+    """Devuelve una conexión a la base de datos local 'database.db'."""
+    conn = sqlite3.connect("database.db") # Usamos la ruta local para asegurar consistencia.
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -20,10 +18,11 @@ def init_db() -> None:
     """Inicializa la base de datos y crea todas las tablas si no existen."""
     conn = get_db_connection()
     with conn:
+        # Aquí van todas las sentencias CREATE TABLE...
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS analysis_results(
-                id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT, exercise_name TEXT,
+                id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT, exercise_name TEXT, 
                 rep_count INTEGER, key_metric_avg REAL, video_path TEXT, metrics_df_json TEXT
             )
             """
@@ -31,7 +30,7 @@ def init_db() -> None:
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS exercises(
-                id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, muscle_group TEXT,
+                id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, muscle_group TEXT, 
                 description_md TEXT, icon_path TEXT, image_full_path TEXT, equipment TEXT
             )
             """
@@ -48,7 +47,7 @@ def init_db() -> None:
         conn.execute(
              """
              CREATE TABLE IF NOT EXISTS training_plans(
-                 id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT,
+                 id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, 
                  timestamp TEXT, plan_content_md TEXT
              )
              """
@@ -63,7 +62,7 @@ def init_db() -> None:
     conn.close()
     populate_initial_exercises()
 
-# --- Población de Datos Iniciales ---
+# --- Población de Datos Iniciales (COMPLETA) ---
 def populate_initial_exercises() -> None:
     """Inserta una lista completa de ejercicios si la tabla está vacía."""
     conn = get_db_connection()
@@ -74,18 +73,13 @@ def populate_initial_exercises() -> None:
     logger.info("Base de datos de ejercicios vacía. Poblando con datos iniciales...")
     
     exercises = [
-        # Pecho
         {"name": "Bench Press", "muscle_group": "Pecho", "equipment": "Barra", "icon_path": "assets/exercises/chest/bench_press_icon.png", "image_full_path": "assets/exercises/chest/bench_press_full.png"},
-
-        # Espalda
         {"name": "Neutral Grip Pull-up", "muscle_group": "Espalda", "equipment": "Peso Corporal", "icon_path": "assets/exercises/back/neutral_grip_pull_up_icon.png", "image_full_path": "assets/exercises/back/neutral_grip_pull_up_full.png"},
         {"name": "Machine Seated Row", "muscle_group": "Espalda", "equipment": "Máquina", "icon_path": "assets/exercises/back/machine_seated_row_icon.png", "image_full_path": "assets/exercises/back/machine_seated_row_full.png"},
         {"name": "Close-Grip Cable Row", "muscle_group": "Espalda", "equipment": "Poleas", "icon_path": "assets/exercises/back/close_grip_cable_row_icon.png", "image_full_path": "assets/exercises/back/close_grip_cable_row_full.png"},
         {"name": "Close-Grip Lat Pulldown", "muscle_group": "Espalda", "equipment": "Poleas", "icon_path": "assets/exercises/back/close_grip_lat_pulldown_icon.png", "image_full_path": "assets/exercises/back/close_grip_lat_pulldown_full.png"},
         {"name": "Behind The Neck Lat Pulldown", "muscle_group": "Espalda", "equipment": "Poleas", "icon_path": "assets/exercises/back/behind_the_neck_lat_pulldown_icon.png", "image_full_path": "assets/exercises/back/behind_the_neck_lat_pulldown_full.png"},
         {"name": "Wide Grip Overhand Lat Pulldown", "muscle_group": "Espalda", "equipment": "Poleas", "icon_path": "assets/exercises/back/wide_grip_overhand_lat_pulldown_icon.png", "image_full_path": "assets/exercises/back/wide_grip_overhand_lat_pulldown_full.png"},
-
-        # Bíceps
         {"name": "Standing Barbell Curl", "muscle_group": "Bíceps", "equipment": "Barra", "icon_path": "assets/exercises/biceps/standing_barbell_curl_icon.png", "image_full_path": "assets/exercises/biceps/standing_barbell_curl_full.png"},
         {"name": "Machine Preacher Curl", "muscle_group": "Bíceps", "equipment": "Máquina", "icon_path": "assets/exercises/biceps/machine_preacher_curl_icon.png", "image_full_path": "assets/exercises/biceps/machine_preacher_curl_full.png"},
         {"name": "Incline Dumbbell Curl", "muscle_group": "Bíceps", "equipment": "Mancuernas", "icon_path": "assets/exercises/biceps/incline_dumbbell_curl_icon.png", "image_full_path": "assets/exercises/biceps/incline_dumbbell_curl_full.png"},
@@ -95,15 +89,9 @@ def populate_initial_exercises() -> None:
         {"name": "Concentration Curl", "muscle_group": "Bíceps", "equipment": "Mancuernas", "icon_path": "assets/exercises/biceps/concentration_curl_icon.png", "image_full_path": "assets/exercises/biceps/concentration_curl_full.png"},
         {"name": "Dumbbell Hammer Curl", "muscle_group": "Bíceps", "equipment": "Mancuernas", "icon_path": "assets/exercises/biceps/dumbbell_hammer_curl_icon.png", "image_full_path": "assets/exercises/biceps/dumbbell_hammer_curl_full.png"},
         {"name": "Incline Barbell Curl", "muscle_group": "Bíceps", "equipment": "Barra", "icon_path": "assets/exercises/biceps/incline_barbell_curl_icon.png", "image_full_path": "assets/exercises/biceps/incline_barbell_curl_full.png"},
-
-        # Tríceps
         {"name": "Tricep Extensions", "muscle_group": "Tríceps", "equipment": "Poleas", "icon_path": "assets/exercises/triceps/tricep_extensions_icon.png", "image_full_path": "assets/exercises/triceps/tricep_extensions_full.png"},
         {"name": "Underhand Kickbacks", "muscle_group": "Tríceps", "equipment": "Mancuernas", "icon_path": "assets/exercises/triceps/underhand_kickbacks_icon.png", "image_full_path": "assets/exercises/triceps/underhand_kickbacks_full.png"},
-
-        # Hombros
         {"name": "Standing Dumbbell Fly", "muscle_group": "Hombros", "equipment": "Mancuernas", "icon_path": "assets/exercises/shoulders/standing_dumbbell_fly_icon.png", "image_full_path": "assets/exercises/shoulders/standing_dumbbell_fly_full.png"},
-
-        # Piernas
         {"name": "Squat", "muscle_group": "Piernas", "equipment": "Barra", "icon_path": "assets/exercises/legs/squat_icon.png", "image_full_path": "assets/exercises/legs/squat_full.png"},
     ]
 
