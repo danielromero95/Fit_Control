@@ -148,7 +148,9 @@ class MainWindow(QMainWindow):
         for i, btn in enumerate(getattr(self, "nav_buttons", [])):
             btn.setChecked(i == index)
         if index == self.stack.indexOf(self.progress_page):
-            self.progress_page.refresh_analysis_list()
+            self.progress_page.refresh_analysis_list(
+                self.progress_page.exercise_combo.currentText()
+            )
         if index == self.stack.indexOf(self.dashboard_page):
             self.dashboard_page.refresh_dashboard()
         w = self.stack.currentWidget()
