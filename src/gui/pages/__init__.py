@@ -6,6 +6,7 @@ from .settings_page import SettingsPage
 from .exercises_page import ExercisesPage
 from .exercise_detail_page import ExerciseDetailPage
 from .contact_page import ContactPage
+from .web_calendar_page import WebCalendarPage
 
 __all__ = [
     "DashboardPage",
@@ -16,5 +17,6 @@ __all__ = [
     "ExercisesPage",
     "ExerciseDetailPage",
     "ContactPage",
+    "WebCalendarPage",
 ]
 
