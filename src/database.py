@@ -85,20 +85,20 @@ def populate_initial_exercises() -> None:
         {"name": "Behind The Neck Lat Pulldown", "muscle_group": "Espalda", "equipment": "Poleas", "icon_path": "assets/exercises/back/behind_the_neck_lat_pulldown_icon.png", "image_full_path": "assets/exercises/back/behind_the_neck_lat_pulldown_full.png"},
         {"name": "Wide Grip Overhand Lat Pulldown", "muscle_group": "Espalda", "equipment": "Poleas", "icon_path": "assets/exercises/back/wide_grip_overhand_lat_pulldown_icon.png", "image_full_path": "assets/exercises/back/wide_grip_overhand_lat_pulldown_full.png"},
 
-        # Brazos (Bíceps)
-        {"name": "Standing Barbell Curl", "muscle_group": "Brazos", "equipment": "Barra", "icon_path": "assets/exercises/biceps/standing_barbell_curl_icon.png", "image_full_path": "assets/exercises/biceps/standing_barbell_curl_full.png"},
-        {"name": "Machine Preacher Curl", "muscle_group": "Brazos", "equipment": "Máquina", "icon_path": "assets/exercises/biceps/machine_preacher_curl_icon.png", "image_full_path": "assets/exercises/biceps/machine_preacher_curl_full.png"},
-        {"name": "Incline Dumbbell Curl", "muscle_group": "Brazos", "equipment": "Mancuernas", "icon_path": "assets/exercises/biceps/incline_dumbbell_curl_icon.png", "image_full_path": "assets/exercises/biceps/incline_dumbbell_curl_full.png"},
-        {"name": "Dumbbell Scott Curl", "muscle_group": "Brazos", "equipment": "Mancuernas", "icon_path": "assets/exercises/biceps/dumbbell_scott_curl_icon.png", "image_full_path": "assets/exercises/biceps/dumbbell_scott_curl_full.png"},
-        {"name": "Overhead Cable Curl", "muscle_group": "Brazos", "equipment": "Poleas", "icon_path": "assets/exercises/biceps/overhead_cable_curl_icon.png", "image_full_path": "assets/exercises/biceps/overhead_cable_curl_full.png"},
-        {"name": "Standing Dumbbell Curl", "muscle_group": "Brazos", "equipment": "Mancuernas", "icon_path": "assets/exercises/biceps/standing_dumbbell_curl_icon.png", "image_full_path": "assets/exercises/biceps/standing_dumbbell_curl_full.png"},
-        {"name": "Concentration Curl", "muscle_group": "Brazos", "equipment": "Mancuernas", "icon_path": "assets/exercises/biceps/concentration_curl_icon.png", "image_full_path": "assets/exercises/biceps/concentration_curl_full.png"},
-        {"name": "Dumbbell Hammer Curl", "muscle_group": "Brazos", "equipment": "Mancuernas", "icon_path": "assets/exercises/biceps/dumbbell_hammer_curl_icon.png", "image_full_path": "assets/exercises/biceps/dumbbell_hammer_curl_full.png"},
-        {"name": "Incline Barbell Curl", "muscle_group": "Brazos", "equipment": "Barra", "icon_path": "assets/exercises/biceps/incline_barbell_curl_icon.png", "image_full_path": "assets/exercises/biceps/incline_barbell_curl_full.png"},
+        # Bíceps
+        {"name": "Standing Barbell Curl", "muscle_group": "Bíceps", "equipment": "Barra", "icon_path": "assets/exercises/biceps/standing_barbell_curl_icon.png", "image_full_path": "assets/exercises/biceps/standing_barbell_curl_full.png"},
+        {"name": "Machine Preacher Curl", "muscle_group": "Bíceps", "equipment": "Máquina", "icon_path": "assets/exercises/biceps/machine_preacher_curl_icon.png", "image_full_path": "assets/exercises/biceps/machine_preacher_curl_full.png"},
+        {"name": "Incline Dumbbell Curl", "muscle_group": "Bíceps", "equipment": "Mancuernas", "icon_path": "assets/exercises/biceps/incline_dumbbell_curl_icon.png", "image_full_path": "assets/exercises/biceps/incline_dumbbell_curl_full.png"},
+        {"name": "Dumbbell Scott Curl", "muscle_group": "Bíceps", "equipment": "Mancuernas", "icon_path": "assets/exercises/biceps/dumbbell_scott_curl_icon.png", "image_full_path": "assets/exercises/biceps/dumbbell_scott_curl_full.png"},
+        {"name": "Overhead Cable Curl", "muscle_group": "Bíceps", "equipment": "Poleas", "icon_path": "assets/exercises/biceps/overhead_cable_curl_icon.png", "image_full_path": "assets/exercises/biceps/overhead_cable_curl_full.png"},
+        {"name": "Standing Dumbbell Curl", "muscle_group": "Bíceps", "equipment": "Mancuernas", "icon_path": "assets/exercises/biceps/standing_dumbbell_curl_icon.png", "image_full_path": "assets/exercises/biceps/standing_dumbbell_curl_full.png"},
+        {"name": "Concentration Curl", "muscle_group": "Bíceps", "equipment": "Mancuernas", "icon_path": "assets/exercises/biceps/concentration_curl_icon.png", "image_full_path": "assets/exercises/biceps/concentration_curl_full.png"},
+        {"name": "Dumbbell Hammer Curl", "muscle_group": "Bíceps", "equipment": "Mancuernas", "icon_path": "assets/exercises/biceps/dumbbell_hammer_curl_icon.png", "image_full_path": "assets/exercises/biceps/dumbbell_hammer_curl_full.png"},
+        {"name": "Incline Barbell Curl", "muscle_group": "Bíceps", "equipment": "Barra", "icon_path": "assets/exercises/biceps/incline_barbell_curl_icon.png", "image_full_path": "assets/exercises/biceps/incline_barbell_curl_full.png"},
 
-        # Brazos (Tríceps)
-        {"name": "Tricep Extensions", "muscle_group": "Brazos", "equipment": "Poleas", "icon_path": "assets/exercises/triceps/tricep_extensions_icon.png", "image_full_path": "assets/exercises/triceps/tricep_extensions_full.png"},
-        {"name": "Underhand Kickbacks", "muscle_group": "Brazos", "equipment": "Mancuernas", "icon_path": "assets/exercises/triceps/underhand_kickbacks_icon.png", "image_full_path": "assets/exercises/triceps/underhand_kickbacks_full.png"},
+        # Tríceps
+        {"name": "Tricep Extensions", "muscle_group": "Tríceps", "equipment": "Poleas", "icon_path": "assets/exercises/triceps/tricep_extensions_icon.png", "image_full_path": "assets/exercises/triceps/tricep_extensions_full.png"},
+        {"name": "Underhand Kickbacks", "muscle_group": "Tríceps", "equipment": "Mancuernas", "icon_path": "assets/exercises/triceps/underhand_kickbacks_icon.png", "image_full_path": "assets/exercises/triceps/underhand_kickbacks_full.png"},
 
         # Hombros
         {"name": "Standing Dumbbell Fly", "muscle_group": "Hombros", "equipment": "Mancuernas", "icon_path": "assets/exercises/shoulders/standing_dumbbell_fly_icon.png", "image_full_path": "assets/exercises/shoulders/standing_dumbbell_fly_full.png"},
