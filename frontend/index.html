@@ -1,47 +1,77 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FullCalendar Demo</title>
-    <!-- FullCalendar CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
-</head>
-<body>
-    <div id="calendar"></div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const calendarEl = document.getElementById('calendar');
+        const detailPanel = document.getElementById('detail-panel');
+        const detailContent = document.getElementById('detail-content');
+        const closeBtn = detailPanel.querySelector('.close-btn');
 
-    <!-- FullCalendar JS -->
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            var calendarEl = document.getElementById('calendar');
-
-            var calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: 'dayGridMonth',
-                events: function(fetchInfo, successCallback, failureCallback) {
-                    fetch('/api/workouts/')
-                        .then(function(response) { return response.json(); })
-                        .then(function(data) {
-                            var events = data.map(function(item) {
-                                var exerciseCount = item.entries ? item.entries.length : 0;
-                                var eventTitle = exerciseCount > 0 ? `${exerciseCount} Ejercicio(s)` : 'Día de Descanso';
-
-                                return {
-                                    title: eventTitle,
-                                    start: item.workout_date
-                                };
-                            });
-                            successCallback(events);
-                        })
-                        .catch(function(error) {
-                            console.error('Error fetching events:', error);
-                            failureCallback(error);
-                        });
-                }
-            });
-
-            calendar.render();
+        // --- Eventos del Panel ---
+        closeBtn.addEventListener('click', () => {
+            detailPanel.classList.remove('open');
+            calendar.unselect(); // Usa el método oficial para deseleccionar
         });
-    </script>
-</body>
-</html>
+
+        const calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'es',
+            selectable: true, // Habilita el sistema de selección profesional
+
+            // --- Hook correcto para añadir el punto indicador ---
+            dayCellContent: function(info) {
+                const eventsOnDay = calendar.getEvents().filter(event => 
+                    event.start.toISOString().split('T')[0] === info.date.toISOString().split('T')[0]
+                );
+                
+                if (eventsOnDay.length > 0) {
+                    let numberEl = document.createElement('div');
+                    numberEl.innerHTML = info.dayNumberText;
+                    let dotEl = document.createElement('div');
+                    dotEl.classList.add('workout-dot');
+                    return { domNodes: [numberEl, dotEl] };
+                }
+            },
+
+            // --- Callback correcto para manejar la selección de un día ---
+            select: function(selectionInfo) {
+                const dateStr = selectionInfo.startStr;
+                
+                detailContent.innerHTML = '<p>Cargando entrenamiento...</p>';
+                detailPanel.classList.add('open');
+
+                // --- Lógica de Fetch correcta para el endpoint de detalle ---
+                fetch(`/api/workouts/${dateStr}/`)
+                    .then(response => {
+                        if (response.status === 404) {
+                            detailContent.innerHTML = '<h4>Entrenamiento no encontrado</h4><p>No hay un entrenamiento registrado para este día.</p>';
+                            return null;
+                        }
+                        if (!response.ok) throw new Error('Error del servidor');
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data) {
+                            let html = `<h4>Entrenamiento del ${dateStr}</h4>`;
+                            if (data.entries && data.entries.length > 0) {
+                                html += data.entries.map(entry => `
+                                    <div class="workout-entry-card">
+                                        <strong>${entry.exercise.name}</strong>
+                                        <p>${entry.sets}x${entry.reps} @ ${entry.weight_kg} kg</p>
+                                    </div>
+                                `).join('');
+                            }
+                            detailContent.innerHTML = html;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching workout details:', error);
+                        detailContent.innerHTML = '<p>Error al cargar los detalles.</p>';
+                    });
+            },
+            
+            // --- Carga inicial de datos (solo para los puntos) ---
+            events: '/api/workouts/'
+        });
+
+        calendar.render();
+    });
+</script>
