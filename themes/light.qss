@@ -60,8 +60,6 @@ QListWidget::item:hover {
 QWidget#navPanel {
     background-color: #1A202C;
     border-right: 1px solid #4A5568;
-    qproperty-iconColor: #FFFFFF;
-    qproperty-iconColorChecked: #FFB74D;
 }
 
 QPushButton#navButton {
