@@ -27,6 +27,8 @@ dependencies:
   - pip:
     - mediapipe==0.10.21
     - moviepy==1.0.3
+    - pydantic<2  # Validación de config.yaml
+    - pyyaml
     - matplotlib  # Para las gráficas en la GUI
     - streamlit   # Para la interfaz web
     - qtawesome
