@@ -7,8 +7,10 @@ buildscript {
         ndkVersion = "27.1.12297006"
         // React Native 0.72.x expects Kotlin 1.9.x. Using Kotlin 2.x causes
         // build errors like unresolved reference `serviceOf` in the Gradle
-        // plugin scripts. Stick to a compatible Kotlin version.
-        kotlinVersion = "1.9.22"
+        // plugin scripts. Stick to a compatible Kotlin version. Use the value
+        // defined in gradle.properties so that included builds (like the React
+        // Native gradle plugin) pick up the same version.
+        kotlinVersion = project.properties["kotlinVersion"]
     }
     repositories {
         google()
