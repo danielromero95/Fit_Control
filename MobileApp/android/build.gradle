@@ -17,7 +17,11 @@ buildscript {
     dependencies {
         classpath("com.android.tools.build:gradle")
         classpath("com.facebook.react:react-native-gradle-plugin")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
+        // Explicitly use the Kotlin version defined above instead of
+        // letting Gradle resolve the latest available one. Using Kotlin 2.x
+        // leads to errors like "unresolved reference: serviceOf" when the
+        // React Native Gradle plugin is compiled.
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlinVersion}")
     }
 }
 
