@@ -1,5 +1,6 @@
-from django.urls import path
+# Este es el contenido de workout_api/api/urls.py
 
+from django.urls import path
 from .views import WorkoutListView, WorkoutDetailView
 
 urlpatterns = [

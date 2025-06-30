@@ -1,7 +1,8 @@
 from rest_framework import serializers
 
+# --- LÍNEA CORREGIDA ---
 from .models import Exercise, WorkoutEntry, Workout
-
+# ---------------------
 
 class ExerciseSerializer(serializers.ModelSerializer):
     class Meta:
