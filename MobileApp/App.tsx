@@ -1,36 +1,39 @@
-import 'react-native-gesture-handler';
+import 'react-native-gesture-handler'; // Debe estar en la primera línea
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createDrawerNavigator } from '@react-navigation/drawer';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-// 1. IMPORTAMOS el proveedor que nos falta
+// Importamos los dos "Proveedores" que nos daban problemas
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-// Importamos las pantallas
+// Importamos las pantallas que creaste
 import { HomeScreen } from './src/screens/HomeScreen';
 import { ExercisesScreen } from './src/screens/ExercisesScreen';
 import { PlansScreen } from './src/screens/PlansScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { ContactScreen } from './src/screens/ContactScreen';
 
+// Creamos la instancia del navegador de menú lateral
 const Drawer = createDrawerNavigator();
 
 const App = () => {
   return (
+    // Envolvemos todo en los dos contenedores necesarios, en este orden
     <GestureHandlerRootView style={{ flex: 1 }}>
-      {/* 2. ENVOLVEMOS el navegador con SafeAreaProvider */}
       <SafeAreaProvider>
         <NavigationContainer>
           <Drawer.Navigator
-            initialRouteName="Inicio"
+            initialRouteName="Inicio" // La pantalla que se verá al abrir la app
             screenOptions={{
-              headerStyle: { backgroundColor: '#2c3e50' },
-              headerTintColor: '#fff',
-              drawerActiveBackgroundColor: '#3498db',
-              drawerActiveTintColor: '#fff',
+              // Personalizamos el estilo
+              headerStyle: { backgroundColor: '#2c3e50' }, // Color de la barra superior
+              headerTintColor: '#fff', // Color del título y del botón del menú
+              drawerActiveBackgroundColor: '#3498db', // Color del elemento seleccionado
+              drawerActiveTintColor: '#fff', // Color del texto del elemento seleccionado
             }}
           >
+            {/* Definimos cada una de las pantallas del menú */}
             <Drawer.Screen name="Inicio" component={HomeScreen} />
             <Drawer.Screen name="Ejercicios" component={ExercisesScreen} />
             <Drawer.Screen name="Planes" component={PlansScreen} />
