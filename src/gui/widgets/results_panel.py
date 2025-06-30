@@ -5,7 +5,6 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QListWidget, QFrame, QCheckBox, QGroupBox)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
-from PyQt5.QtMultimedia import QMediaPlayer
 from typing import Dict, Any, Optional
 
 from .plot_widget import PlotWidget
@@ -40,13 +39,16 @@ class ResultsPanel(QWidget):
         
         top_layout = QHBoxLayout()
         self.rep_counter = QLabel("0")
-        font_rep = QFont(); font_rep.setPointSize(48); font_rep.setBold(True)
+        font_rep = QFont()
+        font_rep.setPointSize(48)
+        font_rep.setBold(True)
         self.rep_counter.setFont(font_rep)
         self.rep_counter.setAlignment(Qt.AlignCenter)
         top_layout.addWidget(self._create_box("Repeticiones", self.rep_counter))
 
         self.status_label = QLabel("Listo")
-        font_status = QFont(); font_status.setPointSize(12)
+        font_status = QFont()
+        font_status.setPointSize(12)
         self.status_label.setFont(font_status)
         self.status_label.setAlignment(Qt.AlignCenter)
         top_layout.addWidget(self._create_box("Estado", self.status_label))
@@ -70,7 +72,8 @@ class ResultsPanel(QWidget):
         
         # Lista de Fallos
         faults_label = QLabel("Fallos Detectados:")
-        font_faults = QFont(); font_faults.setBold(True)
+        font_faults = QFont()
+        font_faults.setBold(True)
         faults_label.setFont(font_faults)
         right_column_layout.addWidget(faults_label)
         self.fault_list = QListWidget(self)
@@ -134,11 +137,13 @@ class ResultsPanel(QWidget):
             is_visible = display_name in curves_found
             checkbox.setVisible(is_visible)
             checkbox.setChecked(is_visible)
-            if is_visible: any_cb_visible = True
+            if is_visible:
+                any_cb_visible = True
         self.visibility_group.setVisible(any_cb_visible)
         
         faults = results.get("fallos_detectados", [])
-        if not faults: self.fault_list.addItem("¡No se detectaron fallos!")
+        if not faults:
+            self.fault_list.addItem("¡No se detectaron fallos!")
         if len(curves_found) == 1 and any_cb_visible:
             self.fault_list.addItem(f"Info: Solo se detectó la '{list(curves_found)[0]}'.")
         for fault in faults:
@@ -152,10 +157,18 @@ class ResultsPanel(QWidget):
 
     def _create_box(self, title: str, widget: QWidget) -> QFrame:
         """Función helper para crear cajas con título y borde."""
-        box = QFrame(); box.setFrameShape(QFrame.StyledPanel); layout = QVBoxLayout(box)
-        title_label = QLabel(title); font = title_label.font(); font.setBold(True)
-        title_label.setFont(font); title_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(title_label); layout.addWidget(widget)
+        box = QFrame()
+        box.setFrameShape(QFrame.StyledPanel)
+        layout = QVBoxLayout(box)
+
+        title_label = QLabel(title)
+        font = title_label.font()
+        font.setBold(True)
+        title_label.setFont(font)
+        title_label.setAlignment(Qt.AlignCenter)
+
+        layout.addWidget(title_label)
+        layout.addWidget(widget)
         return box
     
     def clear_results(self) -> None:
@@ -165,9 +178,12 @@ class ResultsPanel(QWidget):
         except TypeError:
             pass
 
-        self.rep_counter.setText("0"); self.status_label.setText("Listo para analizar")
-        self.plot_widget.clear_plots(); self.fault_list.clear()
-        self.video_player.clear_media(); self.visibility_group.hide()
+        self.rep_counter.setText("0")
+        self.status_label.setText("Listo para analizar")
+        self.plot_widget.clear_plots()
+        self.fault_list.clear()
+        self.video_player.clear_media()
+        self.visibility_group.hide()
 
     def show_empty_state(self) -> None:
         """Muestra un mensaje cuando no hay análisis guardados."""

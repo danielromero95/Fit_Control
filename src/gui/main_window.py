@@ -30,7 +30,6 @@ from .pages import (
     DashboardPage,
     ExercisesPage,
     ExerciseDetailPage,
-    PlansPage,
     ProgressPage,
     SettingsPage,
     ContactPage,
@@ -236,9 +235,12 @@ class MainWindow(QMainWindow):
             from src.A_preprocessing.video_metadata import get_video_rotation
             self.current_rotation = get_video_rotation(path) or app_constants.DEFAULT_ROTATE
         except Exception as e:
-            logger.error(f"Fallo en autodetección de rotación: {e}"); self.current_rotation = 0
+            logger.error(f"Fallo en autodetección de rotación: {e}")
+            self.current_rotation = 0
 
-        cap = cv2.VideoCapture(path); ret, frame = cap.read(); cap.release()
+        cap = cv2.VideoCapture(path)
+        ret, frame = cap.read()
+        cap.release()
         if ret:
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             self.original_pixmap = QPixmap.fromImage(QImage(frame_rgb.data, frame_rgb.shape[1], frame_rgb.shape[0], frame_rgb.strides[0], QImage.Format_RGB888))
@@ -254,13 +256,15 @@ class MainWindow(QMainWindow):
         
     def _on_rotation_requested(self, angle: int):
         """Manejador para la rotación manual de la previsualización del vídeo."""
-        if self.original_pixmap is None: return
+        if self.original_pixmap is None:
+            return
         self.current_rotation = (self.current_rotation + angle) % 360
         self._update_thumbnail()
 
     def _update_thumbnail(self):
         """Actualiza la imagen de previsualización con la rotación actual."""
-        if self.original_pixmap is None: return
+        if self.original_pixmap is None:
+            return
         transform = QTransform().rotate(self.current_rotation)
         rotated_pixmap = self.original_pixmap.transformed(transform)
         self.exercise_detail_page.analysis_page.video_display.set_thumbnail(
@@ -274,7 +278,8 @@ class MainWindow(QMainWindow):
     def _start_analysis(self):
         """Recoge los ajustes de la GUI e inicia el análisis en un hilo separado."""
         if not self.video_path:
-            QMessageBox.critical(self, "Error", "No se ha seleccionado ningún vídeo."); return
+            QMessageBox.critical(self, "Error", "No se ha seleccionado ningún vídeo.")
+            return
         
         gui_settings = {
             "output_dir": self.settings_page.output_dir_edit.text().strip(),
