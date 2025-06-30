@@ -5,7 +5,10 @@ buildscript {
         compileSdkVersion = 35
         targetSdkVersion = 35
         ndkVersion = "27.1.12297006"
-        kotlinVersion = "2.1.20"
+        // React Native 0.72.x expects Kotlin 1.9.x. Using Kotlin 2.x causes
+        // build errors like unresolved reference `serviceOf` in the Gradle
+        // plugin scripts. Stick to a compatible Kotlin version.
+        kotlinVersion = "1.9.22"
     }
     repositories {
         google()
