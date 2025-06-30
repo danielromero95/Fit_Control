@@ -19,7 +19,7 @@ class MainActivity : ReactActivity() {
   // 2. Y AÑADE TODO ESTE BLOQUE DE CÓDIGO
   // Sirve para inicializar correctamente el gesture handler
   override fun onCreate(savedInstanceState: Bundle?) {
-    super.onCreate(null)
+    super.onCreate(savedInstanceState)
   }
   // ------------------------------------------
 
