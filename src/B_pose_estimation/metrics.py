@@ -17,9 +17,16 @@ def normalize_landmarks(landmarks):
 def calculate_angle(p1, p2, p3):
     """Calcula el ángulo (en grados) formado por tres puntos."""
     v1, v2 = (p1['x'] - p2['x'], p1['y'] - p2['y']), (p3['x'] - p2['x'], p3['y'] - p2['y'])
-    dot_product, mag1, mag2 = v1[0] * v2[0] + v1[1] * v2[1], math.hypot(v1[0], v1[1]), math.hypot(v2[0], v2[1])
-    if mag1 * mag2 == 0: return 0.0
-    return math.degrees(math.acos(max(min(dot_product / (mag1 * mag2), 1.0), -1.0)))
+    dot_product, mag1, mag2 = (
+        v1[0] * v2[0] + v1[1] * v2[1],
+        math.hypot(v1[0], v1[1]),
+        math.hypot(v2[0], v2[1]),
+    )
+    if mag1 * mag2 == 0:
+        return 0.0
+    return math.degrees(
+        math.acos(max(min(dot_product / (mag1 * mag2), 1.0), -1.0))
+    )
 
 def extract_joint_angles(landmarks):
     """Extrae un diccionario de ángulos clave de las articulaciones."""
@@ -53,7 +60,11 @@ def calculate_angular_velocity(angle_sequence, fps):
 
 def calculate_symmetry(angle_left, angle_right):
     """Calcula la simetría entre dos ángulos."""
-    if pd.isna(angle_left) or pd.isna(angle_right): return np.nan
+    if pd.isna(angle_left) or pd.isna(angle_right):
+        return np.nan
+
     max_angle = max(abs(angle_left), abs(angle_right))
-    if max_angle == 0: return 1.0
+    if max_angle == 0:
+        return 1.0
+
     return 1.0 - (abs(angle_left - angle_right) / max_angle)

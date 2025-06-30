@@ -5,9 +5,9 @@ import pandas as pd
 import numpy as np
 import pyqtgraph as pg
 from PyQt5.QtCore import pyqtSignal, Qt, QPointF
-from PyQt5.QtGui import QGuiApplication, QMouseEvent
+from PyQt5.QtGui import QGuiApplication
 from PyQt5.QtWidgets import QWidget, QVBoxLayout
-from typing import Optional, Tuple, List, Dict, Any
+from typing import Optional, Tuple, Dict, Any
 
 from src.gui.gui_utils import get_first_available_series
 from src.config import settings, ExerciseParams
@@ -60,7 +60,8 @@ class PlotWidget(QWidget):
         self._vb.scene().sigMouseMoved.connect(self._on_mouse_event)
         
         self.setFocusPolicy(Qt.StrongFocus)
-        layout = QVBoxLayout(); layout.setContentsMargins(0,0,0,0)
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.plot_item)
         self.setLayout(layout)
 
@@ -107,8 +108,10 @@ class PlotWidget(QWidget):
         # Normalizamos el evento para obtener la posición, sea de clic o de movimiento
         scene_pos = event if isinstance(event, QPointF) else event.scenePos()
         
-        if self._x_data is None or len(self._x_data) == 0: return
-        if not self._vb.sceneBoundingRect().contains(scene_pos): return
+        if self._x_data is None or len(self._x_data) == 0:
+            return
+        if not self._vb.sceneBoundingRect().contains(scene_pos):
+            return
             
         mouse_point = self._vb.mapSceneToView(scene_pos)
         idx = np.abs(self._x_data - mouse_point.x()).argmin()
@@ -119,7 +122,8 @@ class PlotWidget(QWidget):
         
     def update_marker_position(self, frame_index: int) -> None:
         """Mueve los elementos de feedback visual a un frame específico."""
-        if self._x_data is None: return
+        if self._x_data is None:
+            return
 
         self.v_line.setPos(frame_index)
         self.v_line.show()
@@ -187,7 +191,8 @@ class PlotWidget(QWidget):
         
     def set_curve_visibility(self, name: str, visible: bool):
         """Muestra u oculta una curva y actualiza la leyenda."""
-        if name not in self._plotted_curves: return
+        if name not in self._plotted_curves:
+            return
         
         self._plotted_curves[name].setVisible(visible)
         
@@ -204,9 +209,12 @@ class PlotWidget(QWidget):
             self.plot_item.removeItem(curve)
         self._plotted_curves.clear()
         self._x_data = None
-        self.v_line.hide(); self.marker.clear()
-        self.h_line_low.hide(); self.h_line_high.hide()
-        if self.legend: self.legend.setVisible(False)
+        self.v_line.hide()
+        self.marker.clear()
+        self.h_line_low.hide()
+        self.h_line_high.hide()
+        if self.legend:
+            self.legend.setVisible(False)
 
     def _get_plot_series(self, df_metrics: pd.DataFrame) -> Tuple[Optional[pd.Series], ...]:
         """Helper para extraer las series de datos a dibujar."""

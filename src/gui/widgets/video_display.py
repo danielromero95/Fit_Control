@@ -44,14 +44,16 @@ class VideoDisplayWidget(QWidget):
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
-            self.setStyleSheet(self.dragover_style); event.acceptProposedAction()
+            self.setStyleSheet(self.dragover_style)
+            event.acceptProposedAction()
     def dragLeaveEvent(self, event):
         self.setStyleSheet(self.normal_style)
     def dropEvent(self, event):
         self.setStyleSheet(self.normal_style)
         if event.mimeData().hasUrls():
             path = event.mimeData().urls()[0].toLocalFile()
-            if os.path.isfile(path): self.file_dropped.emit(path)
+            if os.path.isfile(path):
+                self.file_dropped.emit(path)
 
     def set_thumbnail(self, pixmap):
         # --- CAMBIO CLAVE: Simplificado para no interferir con el layout ---

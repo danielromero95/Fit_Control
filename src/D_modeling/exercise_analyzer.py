@@ -4,12 +4,11 @@ Módulo central y unificado para todo el análisis de ejercicios.
 Contiene un motor de análisis genérico, robusto y optimizado.
 """
 import pandas as pd
-import numpy as np
 from scipy.signal import find_peaks
 import logging
-from typing import List, Tuple, Dict, Any
+from typing import List, Dict, Any
 
-from src.config import settings, ExerciseParams, MetricDefinition
+from src.config import ExerciseParams, MetricDefinition
 from src.constants import MetricType
 from src.B_pose_estimation.estimators import EstimationResult
 from src.D_modeling.math_utils import calculate_angle_3d
@@ -96,7 +95,8 @@ def count_repetitions(df_metrics: pd.DataFrame, params: ExerciseParams) -> int:
         return 0
 
     angles = df_metrics[angle_column].ffill().bfill().to_numpy()
-    if len(angles) == 0: return 0
+    if len(angles) == 0:
+        return 0
 
     inverted_angles = -angles
     inverted_threshold = -params.low_thresh
