@@ -26,15 +26,33 @@ translator = Translator(os.path.abspath(_TRANSLATIONS_PATH))
 
 # 2) Utils propias
 from .main_window import MainWindow
+from pathlib import Path
+import subprocess
 
-def find_project_root():
-    path = os.path.abspath(os.path.dirname(__file__))
-    while os.path.basename(path) != 'gym-performance-analysis':
-        parent = os.path.dirname(path)
-        if parent == path:
-            return os.getcwd()
-        path = parent
-    return path
+
+def find_project_root() -> str:
+    """Return the repository root directory.
+
+    Falls back to searching for ``config.yaml`` if git is unavailable.
+    """
+    try:
+        root = (
+            subprocess.check_output([
+                "git",
+                "rev-parse",
+                "--show-toplevel",
+            ],
+            text=True)
+            .strip()
+        )
+        return root
+    except Exception:
+        path = Path(__file__).resolve().parent
+        while path != path.parent:
+            if (path / "config.yaml").exists() and (path / "src").exists():
+                return str(path)
+            path = path.parent
+        return str(Path.cwd())
 
 def setup_logging(project_root: str):
     log_dir = os.path.join(project_root, 'logs')
