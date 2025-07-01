@@ -34,3 +34,5 @@ dependencies:
     - qtawesome
     - pyinstaller
     - pyqtgraph  # Para gráficos interactivos en la GUI
+    - plotly>=5.0.0  # Para gráficos interactivos en streamlit
+    - requests>=2.25.0  # Para peticiones HTTP

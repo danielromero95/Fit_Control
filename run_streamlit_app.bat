@@ -1,12 +1,13 @@
 @echo off
-echo ======================================
-echo  Gym Performance Analyzer - Streamlit
-echo ======================================
+echo ====================================
+echo  Gym Performance Analyzer - Web App
+echo ====================================
 
 :: Verificar si conda está disponible
 where conda >nul 2>nul
 if %ERRORLEVEL% neq 0 (
     echo Error: Conda no encontrado. Instala Anaconda o Miniconda.
+    echo Descarga desde: https://www.anaconda.com/products/distribution
     pause
     exit /b 1
 )
@@ -21,16 +22,21 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
-:: Verificar streamlit
-python -c "import streamlit" 2>nul
+:: Verificar dependencias críticas
+python -c "import streamlit; import cv2; import mediapipe; import plotly; import requests" 2>nul
 if %ERRORLEVEL% neq 0 (
-    echo Instalando Streamlit...
-    pip install streamlit
+    echo Error: Dependencias faltantes. Instalando...
+    pip install streamlit opencv-python mediapipe plotly requests
 )
 
-:: Ejecutar aplicación
-echo Iniciando servidor Streamlit...
-echo La aplicación se abrirá en: http://localhost:8501
-streamlit run src/enhanced_app.py --server.port=8501
+:: Cambiar al directorio del proyecto
+cd /d "%~dp0"
+
+:: Añadir el directorio actual al PYTHONPATH para imports relativos
+set PYTHONPATH=%CD%;%PYTHONPATH%
+
+:: Ejecutar aplicación web
+echo Iniciando aplicación web en http://localhost:8501
+streamlit run src/enhanced_app.py
 
 pause
