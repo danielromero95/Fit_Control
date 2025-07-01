@@ -8,6 +8,30 @@ El objetivo real de la aplicación es ofrecer una plataforma integral que permit
 * Analizar de forma técnica la ejecución de cada ejercicio.
 * Registrar y visualizar el progreso del usuario a lo largo del tiempo.
 
+## 🚀 Ejecución Rápida
+
+Para ejecutar fácilmente cualquier aplicación:
+
+```bash
+./run_app.sh
+```
+
+O ejecuta aplicaciones individuales:
+
+```bash
+./run_gui_app.sh       # Aplicación GUI completa
+./run_streamlit_app.sh # Demo web Streamlit  
+./run_django_api.sh    # API Django
+./run_mobile_app.sh    # Aplicación móvil React Native
+```
+
+**Verificación del entorno:**
+```bash
+./verificar_entorno.sh  # Verifica que todo esté listo
+```
+
+📚 **Guía completa**: Ver `GUIA_EJECUCION.md` para instrucciones detalladas.
+
 ## Requisitos
 
 Se recomienda crear el entorno Conda definido en `environment.yml`:
