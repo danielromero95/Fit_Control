@@ -1,36 +1,35 @@
 # Django and REST Framework
-Django>=4.2,<5.0
-djangorestframework>=3.14.0
-djangorestframework-simplejwt>=5.2.2
-django-cors-headers>=4.0.0
-django-filter>=23.2
+Django==4.2.7
+djangorestframework==3.14.0
+django-cors-headers==4.3.1
+Pillow==10.0.1
+django-extensions==3.2.3
+python-decouple==3.8
+djangorestframework-simplejwt==5.3.0
 
-# Database
-psycopg2-binary>=2.9.6  # PostgreSQL adapter (for production)
+# Computer Vision compatibles con Python 3.13
+opencv-python==4.8.1.78
+numpy==1.24.3
 
-# Computer Vision and AI
-opencv-python>=4.8.0
-# mediapipe>=0.10.0  # Temporarily commented - will install manually
-numpy>=1.24.0
-Pillow>=10.0.0
+# Base de datos
+psycopg2-binary==2.9.7
 
-# Video processing
-# moviepy>=1.0.3  # Temporarily commented - has dependency issues
+# Utilidades
+python-dateutil==2.8.2
 
-# Environment variables
-python-decouple>=3.8
+# Testing
+pytest==7.4.2
+pytest-django==4.5.2
 
-# Development tools
-pytest>=7.4.0
-pytest-django>=4.5.2
-black>=23.7.0
-flake8>=6.0.0
-isort>=5.12.0
+# Logging y debugging
+coloredlogs==15.0.1
 
-# Production
-gunicorn>=21.2.0
-whitenoise>=6.5.0
+# Optimización de imágenes
+imgaug==0.4.0
 
-# Utilities
-python-dateutil>=2.8.2
-requests>=2.31.0
+# Para análisis de movimiento y poses (sin MediaPipe)
+filterpy==1.4.5  # Para filtros de Kalman
+munkres==1.1.4   # Para tracking
+
+# Serialización y almacenamiento
+jsonfield==3.1.0
