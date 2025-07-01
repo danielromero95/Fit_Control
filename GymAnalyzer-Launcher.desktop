@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Gym Performance Analyzer
+Comment=Launcher para ejecutar aplicaciones del Gym Performance Analyzer
+Exec=/workspace/run_launcher.sh
+Icon=/workspace/assets/FitControl_logo.ico
+Terminal=true
+StartupNotify=true
+Categories=Development;Science;
+Keywords=gym;fitness;analyzer;performance;launcher;
+MimeType=application/x-executable;
+StartupWMClass=gym-analyzer-launcher
