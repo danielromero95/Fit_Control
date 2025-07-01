@@ -8,8 +8,8 @@ import {
   Dimensions,
   StatusBar,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'react-native-linear-gradient';
+import Icon from 'react-native-vector-icons/Ionicons';
 
 const { width } = Dimensions.get('window');
 
@@ -24,57 +24,84 @@ interface StatCard {
 export const HomeScreen = ({ navigation }: any) => {
   const [stats, setStats] = useState<StatCard[]>([
     {
-      title: 'Entrenamientos',
-      value: '12',
-      icon: 'fitness',
-      color: '#4ECDC4',
-      trend: '+2 esta semana'
+      title: 'Videos Analizados',
+      value: '24',
+      icon: 'videocam',
+      color: '#BB86FC',
+      trend: '+5 esta semana'
     },
     {
-      title: 'Repeticiones',
-      value: '450',
-      icon: 'trending-up',
-      color: '#45B7D1',
-      trend: '+15% vs anterior'
+      title: 'Sesiones Grabadas',
+      value: '32',
+      icon: 'recording',
+      color: '#03DAC6',
+      trend: '+8 vs anterior'
     },
     {
       title: 'Tiempo Total',
-      value: '8.5h',
+      value: '12.5h',
       icon: 'time',
-      color: '#96CEB4',
+      color: '#CF6679',
       trend: 'Esta semana'
     },
     {
-      title: 'Peso Levantado',
-      value: '2.4t',
-      icon: 'barbell',
-      color: '#FFEAA7',
-      trend: '+200kg esta semana'
+      title: 'Precisión Media',
+      value: '87%',
+      icon: 'analytics',
+      color: '#FFA726',
+      trend: '+3% mejora'
     }
   ]);
 
   const quickActions = [
-    { title: 'Nuevo Entrenamiento', icon: 'add-circle', screen: 'Ejercicios', color: '#FF6B6B' },
-    { title: 'Ver Planes', icon: 'calendar', screen: 'Planes', color: '#4ECDC4' },
-    { title: 'Progreso', icon: 'analytics', screen: 'Perfil', color: '#45B7D1' },
-    { title: 'Configuración', icon: 'settings', screen: 'Contacto', color: '#96CEB4' },
+    { title: 'Nueva Grabación', icon: 'videocam', screen: 'Grabación', color: '#BB86FC' },
+    { title: 'Ver Análisis', icon: 'analytics', screen: 'Análisis', color: '#03DAC6' },
+    { title: 'Historial', icon: 'time', screen: 'Historial', color: '#CF6679' },
+    { title: 'Configuración', icon: 'settings', screen: 'Configuración', color: '#FFA726' },
+  ];
+
+  const recentAnalyses = [
+    {
+      id: 1,
+      title: 'Análisis de Sentadilla',
+      timestamp: 'Hace 2 horas',
+      accuracy: '92%',
+      duration: '45 seg',
+      status: 'completed'
+    },
+    {
+      id: 2,
+      title: 'Técnica de Press Banca',
+      timestamp: 'Ayer',
+      accuracy: '85%',
+      duration: '1:20 min',
+      status: 'completed'
+    },
+    {
+      id: 3,
+      title: 'Deadlift Form Check',
+      timestamp: 'Hace 2 días',
+      accuracy: '78%',
+      duration: '2:15 min',
+      status: 'needs_review'
+    }
   ];
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#1a1a2e" />
+      <StatusBar barStyle="light-content" backgroundColor="#121212" />
       
       <LinearGradient
-        colors={['#1a1a2e', '#16213e', '#0f1624']}
+        colors={['#1F1F1F', '#2C2C2C', '#1F1F1F']}
         style={styles.header}
       >
         <View style={styles.headerContent}>
           <View>
-            <Text style={styles.greeting}>¡Hola!</Text>
-            <Text style={styles.username}>Bienvenido de vuelta</Text>
+            <Text style={styles.greeting}>¡Hola Atleta!</Text>
+            <Text style={styles.username}>Analiza tu técnica deportiva</Text>
           </View>
           <TouchableOpacity style={styles.profileButton}>
-            <Ionicons name="person-circle" size={40} color="#4ECDC4" />
+            <Icon name="person-circle" size={40} color="#BB86FC" />
           </TouchableOpacity>
         </View>
       </LinearGradient>
@@ -82,12 +109,12 @@ export const HomeScreen = ({ navigation }: any) => {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Stats Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Resumen de Actividad</Text>
+          <Text style={styles.sectionTitle}>Resumen de Análisis</Text>
           <View style={styles.statsGrid}>
             {stats.map((stat, index) => (
               <View key={index} style={[styles.statCard, { borderLeftColor: stat.color }]}>
                 <View style={styles.statHeader}>
-                  <Ionicons name={stat.icon as any} size={24} color={stat.color} />
+                  <Icon name={stat.icon as any} size={24} color={stat.color} />
                   <Text style={styles.statTitle}>{stat.title}</Text>
                 </View>
                 <Text style={styles.statValue}>{stat.value}</Text>
@@ -109,10 +136,10 @@ export const HomeScreen = ({ navigation }: any) => {
                 activeOpacity={0.7}
               >
                 <LinearGradient
-                  colors={[action.color, `${action.color}CC`]}
+                  colors={[action.color, `${action.color}99`]}
                   style={styles.actionGradient}
                 >
-                  <Ionicons name={action.icon as any} size={28} color="white" />
+                  <Icon name={action.icon as any} size={28} color="white" />
                   <Text style={styles.actionTitle}>{action.title}</Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -120,64 +147,64 @@ export const HomeScreen = ({ navigation }: any) => {
           </View>
         </View>
 
-        {/* Recent Activity */}
+        {/* Recent Analyses */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Actividad Reciente</Text>
-          <View style={styles.activityCard}>
-            <View style={styles.activityItem}>
-              <View style={styles.activityIcon}>
-                <Ionicons name="checkmark-circle" size={20} color="#4ECDC4" />
-              </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityTitle}>Entrenamiento de Pecho completado</Text>
-                <Text style={styles.activityTime}>Hace 2 horas • 45 min</Text>
-              </View>
-            </View>
-            
-            <View style={styles.activityItem}>
-              <View style={styles.activityIcon}>
-                <Ionicons name="trophy" size={20} color="#FFEAA7" />
-              </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityTitle}>¡Nuevo récord personal!</Text>
-                <Text style={styles.activityTime}>Ayer • Press de banca: 80kg</Text>
-              </View>
-            </View>
-
-            <View style={styles.activityItem}>
-              <View style={styles.activityIcon}>
-                <Ionicons name="calendar" size={20} color="#45B7D1" />
-              </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityTitle}>Plan de entrenamiento actualizado</Text>
-                <Text style={styles.activityTime}>Hace 3 días</Text>
-              </View>
-            </View>
+          <Text style={styles.sectionTitle}>Análisis Recientes</Text>
+          <View style={styles.analysesContainer}>
+            {recentAnalyses.map((analysis) => (
+              <TouchableOpacity
+                key={analysis.id}
+                style={styles.analysisCard}
+                onPress={() => navigation.navigate('Análisis')}
+              >
+                <View style={styles.analysisContent}>
+                  <View style={styles.analysisHeader}>
+                    <Icon 
+                      name={analysis.status === 'completed' ? 'checkmark-circle' : 'warning'} 
+                      size={20} 
+                      color={analysis.status === 'completed' ? '#03DAC6' : '#FFA726'} 
+                    />
+                    <Text style={styles.analysisTitle}>{analysis.title}</Text>
+                  </View>
+                  <Text style={styles.analysisTime}>{analysis.timestamp}</Text>
+                  <View style={styles.analysisStats}>
+                    <View style={styles.analysisStat}>
+                      <Icon name="speedometer" size={16} color="#BB86FC" />
+                      <Text style={styles.analysisStatText}>{analysis.accuracy}</Text>
+                    </View>
+                    <View style={styles.analysisStat}>
+                      <Icon name="time" size={16} color="#BB86FC" />
+                      <Text style={styles.analysisStatText}>{analysis.duration}</Text>
+                    </View>
+                  </View>
+                </View>
+                <Icon name="chevron-forward" size={20} color="#666" />
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
 
-        {/* Today's Workout Preview */}
+        {/* Today's Recommendation */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Entrenamiento de Hoy</Text>
+          <Text style={styles.sectionTitle}>Recomendación de Hoy</Text>
           <TouchableOpacity 
-            style={styles.todayWorkoutCard}
-            onPress={() => navigation.navigate('Ejercicios')}
+            style={styles.recommendationCard}
+            onPress={() => navigation.navigate('Grabación')}
           >
             <LinearGradient
               colors={['#667eea', '#764ba2']}
-              style={styles.todayWorkoutGradient}
+              style={styles.recommendationGradient}
             >
-              <View style={styles.todayWorkoutContent}>
-                <Text style={styles.todayWorkoutTitle}>Entrenamiento de Piernas</Text>
-                <Text style={styles.todayWorkoutDetails}>5 ejercicios • 45-60 min</Text>
-                <View style={styles.todayWorkoutProgress}>
-                  <Text style={styles.progressText}>Progreso: 0/5</Text>
-                  <View style={styles.progressBar}>
-                    <View style={[styles.progressFill, { width: '0%' }]} />
-                  </View>
+              <View style={styles.recommendationContent}>
+                <Icon name="bulb" size={32} color="white" style={styles.recommendationIcon} />
+                <View style={styles.recommendationText}>
+                  <Text style={styles.recommendationTitle}>Analiza tu técnica de sentadilla</Text>
+                  <Text style={styles.recommendationDetails}>
+                    Graba una serie de sentadillas para obtener feedback instantáneo sobre tu forma
+                  </Text>
                 </View>
               </View>
-              <Ionicons name="chevron-forward" size={24} color="white" />
+              <Icon name="arrow-forward" size={24} color="white" />
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -189,10 +216,10 @@ export const HomeScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#121212',
   },
   header: {
-    paddingTop: 50,
+    paddingTop: 20,
     paddingBottom: 20,
     paddingHorizontal: 20,
   },
@@ -203,7 +230,7 @@ const styles = StyleSheet.create({
   },
   greeting: {
     fontSize: 16,
-    color: '#a0a0a0',
+    color: '#AAAAAA',
   },
   username: {
     fontSize: 24,
@@ -224,7 +251,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#2c3e50',
+    color: '#FFFFFF',
     marginBottom: 15,
   },
   statsGrid: {
@@ -233,7 +260,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   statCard: {
-    backgroundColor: 'white',
+    backgroundColor: '#1F1F1F',
     borderRadius: 12,
     padding: 16,
     width: (width - 50) / 2,
@@ -242,7 +269,7 @@ const styles = StyleSheet.create({
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.3,
     shadowRadius: 3,
   },
   statHeader: {
@@ -252,19 +279,19 @@ const styles = StyleSheet.create({
   },
   statTitle: {
     fontSize: 14,
-    color: '#7f8c8d',
+    color: '#AAAAAA',
     marginLeft: 8,
     fontWeight: '500',
   },
   statValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#2c3e50',
+    color: '#FFFFFF',
     marginBottom: 4,
   },
   statTrend: {
     fontSize: 12,
-    color: '#27ae60',
+    color: '#03DAC6',
     fontWeight: '500',
   },
   actionsGrid: {
@@ -292,89 +319,84 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: 'center',
   },
-  activityCard: {
-    backgroundColor: 'white',
+  analysesContainer: {
+    backgroundColor: '#1F1F1F',
     borderRadius: 12,
-    padding: 16,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    padding: 4,
   },
-  activityItem: {
+  analysisCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#ecf0f1',
+    borderBottomColor: '#333333',
   },
-  activityIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#f8f9fa',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  activityContent: {
+  analysisContent: {
     flex: 1,
   },
-  activityTitle: {
-    fontSize: 14,
+  analysisHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  analysisTitle: {
+    fontSize: 16,
     fontWeight: '600',
-    color: '#2c3e50',
-    marginBottom: 2,
+    color: '#FFFFFF',
+    marginLeft: 8,
   },
-  activityTime: {
+  analysisTime: {
     fontSize: 12,
-    color: '#7f8c8d',
+    color: '#AAAAAA',
+    marginBottom: 8,
   },
-  todayWorkoutCard: {
+  analysisStats: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  analysisStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  analysisStatText: {
+    fontSize: 12,
+    color: '#AAAAAA',
+  },
+  recommendationCard: {
     borderRadius: 12,
     overflow: 'hidden',
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.3,
     shadowRadius: 3,
   },
-  todayWorkoutGradient: {
+  recommendationGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 20,
   },
-  todayWorkoutContent: {
+  recommendationContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  recommendationIcon: {
+    marginRight: 16,
+  },
+  recommendationText: {
     flex: 1,
   },
-  todayWorkoutTitle: {
+  recommendationTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: 'white',
     marginBottom: 4,
   },
-  todayWorkoutDetails: {
+  recommendationDetails: {
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.8)',
-    marginBottom: 12,
-  },
-  todayWorkoutProgress: {
-    marginTop: 8,
-  },
-  progressText: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginBottom: 6,
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 2,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: 'white',
-    borderRadius: 2,
   },
 });

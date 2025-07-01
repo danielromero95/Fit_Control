@@ -1,97 +1,371 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# TechniqueAnalyzer - Aplicación Móvil de Análisis de Técnica Deportiva
 
-# Getting Started
+Una aplicación móvil avanzada para Android e iOS que utiliza MediaPipe para analizar la técnica deportiva a través de grabación de video y detección de puntos clave corporales.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## 🏃‍♂️ Características
 
-## Step 1: Start Metro
+- **Grabación de Video**: Captura movimientos deportivos con la cámara del dispositivo
+- **Análisis en Tiempo Real**: Detección de puntos clave corporales usando MediaPipe
+- **Feedback Inteligente**: Análisis automático de la técnica y sugerencias de mejora
+- **Historial de Análisis**: Seguimiento del progreso a lo largo del tiempo
+- **Tema Oscuro**: Diseño moderno y elegante optimizado para cualquier momento del día
+- **Múltiples Ejercicios**: Soporte para sentadillas, press banca, peso muerto, y más
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## 🛠️ Configuración de Desarrollo en Windows 11
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+### Prerrequisitos
 
-```sh
-# Using npm
-npm start
+1. **Node.js** (versión 18 o superior)
+   ```bash
+   # Descargar desde https://nodejs.org/
+   # O usar chocolatey
+   choco install nodejs
+   ```
 
-# OR using Yarn
-yarn start
+2. **Git**
+   ```bash
+   # Descargar desde https://git-scm.com/
+   # O usar chocolatey
+   choco install git
+   ```
+
+3. **Yarn** (recomendado sobre npm)
+   ```bash
+   npm install -g yarn
+   ```
+
+4. **Android Studio** (para desarrollo Android)
+   - Descargar desde: https://developer.android.com/studio
+   - Instalar Android SDK
+   - Configurar variables de entorno:
+     ```
+     ANDROID_HOME=C:\Users\%USERNAME%\AppData\Local\Android\Sdk
+     PATH=%PATH%;%ANDROID_HOME%\platform-tools;%ANDROID_HOME%\tools
+     ```
+
+5. **JDK 11** (requerido por React Native)
+   ```bash
+   # Usar chocolatey
+   choco install openjdk11
+   ```
+
+### Configuración para iOS (Opcional - requiere macOS para build final)
+
+6. **Xcode** (solo macOS)
+   - Para desarrollo iOS necesitarás acceso a una Mac con Xcode
+   - Puedes usar servicios como macOS en la nube o GitHub Actions para CI/CD
+
+### Configuración del Proyecto
+
+#### 1. Navegar al directorio de la aplicación móvil
+```bash
+cd MobileApp
 ```
 
-## Step 2: Build and run your app
+#### 2. Instalar dependencias
+```bash
+# Limpiar caché si hay problemas
+yarn cache clean
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+# Instalar dependencias
+yarn install
 
-### Android
+# Para iOS (si estás en macOS)
+cd ios && pod install && cd ..
+```
 
-```sh
-# Using npm
-npm run android
+#### 3. Configurar Android
+```bash
+# Verificar configuración
+npx react-native doctor
 
-# OR using Yarn
+# Si hay problemas, limpiar
+yarn run clean
+cd android && ./gradlew clean && cd ..
+```
+
+#### 4. Configurar variables de entorno
+Crear archivo `.env` en el directorio MobileApp:
+```env
+# MediaPipe Configuration
+MEDIAPIPE_MODEL_URL=https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task
+
+# API Configuration (si planeas usar un backend)
+API_BASE_URL=http://localhost:3000
+
+# App Configuration
+APP_VERSION=1.0.0
+```
+
+### Ejecución de la Aplicación
+
+#### Desarrollo Android
+```bash
+# Iniciar Metro bundler
+yarn start
+
+# En otra terminal, ejecutar en Android
+yarn android
+
+# O específicamente para debug
+yarn run android --variant=debug
+```
+
+#### Desarrollo iOS (macOS requerido)
+```bash
+# Iniciar Metro bundler
+yarn start
+
+# En otra terminal, ejecutar en iOS
+yarn ios
+
+# O específicamente para simulador
+yarn run ios --simulator="iPhone 14"
+```
+
+#### Comandos útiles
+```bash
+# Limpiar caché de Metro
+yarn start --reset-cache
+
+# Limpiar todo y reinstalar
+yarn run clean
+rm -rf node_modules
+yarn install
+
+# Ver logs en tiempo real
+# Android
+adb logcat | grep ReactNativeJS
+
+# iOS (macOS)
+npx react-native log-ios
+```
+
+## 📱 Estructura de la Aplicación
+
+```
+MobileApp/
+├── src/
+│   ├── screens/          # Pantallas principales
+│   │   ├── HomeScreen.tsx       # Dashboard principal
+│   │   ├── RecordingScreen.tsx  # Grabación de video
+│   │   ├── AnalysisScreen.tsx   # Resultados de análisis
+│   │   ├── HistoryScreen.tsx    # Historial de análisis
+│   │   └── SettingsScreen.tsx   # Configuración
+│   ├── components/       # Componentes reutilizables
+│   ├── services/         # Servicios (MediaPipe, API)
+│   ├── store/           # Estado global (Zustand)
+│   └── navigation/      # Configuración de navegación
+├── android/             # Código específico Android
+├── ios/                 # Código específico iOS
+├── package.json         # Dependencias y scripts
+└── README.md           # Esta documentación
+```
+
+## 🎨 Paleta de Colores (Tema Oscuro)
+
+- **Fondo Principal**: `#121212`
+- **Fondo Secundario**: `#1F1F1F`
+- **Acento Principal**: `#BB86FC` (Púrpura)
+- **Acento Secundario**: `#03DAC6` (Turquesa)
+- **Texto Principal**: `#FFFFFF`
+- **Texto Secundario**: `#AAAAAA`
+- **Error/Advertencia**: `#CF6679`
+- **Éxito**: `#03DAC6`
+
+## 🔧 Configuración de VSCode/Cursor
+
+### Extensiones Recomendadas
+```json
+{
+  "recommendations": [
+    "ms-vscode.vscode-typescript-next",
+    "bradlc.vscode-tailwindcss",
+    "ms-vscode.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "ms-vscode.vscode-react-native",
+    "formulahendry.auto-rename-tag",
+    "christian-kohler.path-intellisense"
+  ]
+}
+```
+
+### Configuración de workspace (.vscode/settings.json)
+```json
+{
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "eslint.workingDirectories": ["MobileApp"],
+  "files.associations": {
+    "*.tsx": "typescriptreact"
+  }
+}
+```
+
+## 📦 Dependencias Principales
+
+### Navegación y UI
+- `@react-navigation/native` - Navegación
+- `@react-navigation/drawer` - Menú lateral
+- `react-native-linear-gradient` - Gradientes
+- `react-native-vector-icons` - Iconos
+
+### Cámara y Video
+- `react-native-vision-camera` - Grabación de video avanzada
+- `react-native-permissions` - Manejo de permisos
+
+### Análisis de IA
+- `@mediapipe/tasks-vision` - Detección de poses
+- `@tensorflow/tfjs-react-native` - TensorFlow para React Native
+
+### Estado y Persistencia
+- `zustand` - Manejo de estado
+- `@react-native-async-storage/async-storage` - Almacenamiento local
+
+## 🚀 Build para Producción
+
+### Android Release
+```bash
+# Generar APK de release
+cd android
+./gradlew assembleRelease
+
+# Generar AAB (recomendado para Google Play Store)
+./gradlew bundleRelease
+```
+
+### iOS Release (macOS requerido)
+```bash
+# Build para distribución
+npx react-native run-ios --configuration Release
+
+# Para App Store (usar Xcode)
+# Abrir ios/TechniqueAnalyzer.xcworkspace en Xcode
+# Product -> Archive
+```
+
+## 🧪 Testing
+
+```bash
+# Ejecutar tests unitarios
+yarn test
+
+# Ejecutar tests en modo watch
+yarn test --watch
+
+# Coverage
+yarn test --coverage
+```
+
+## 🔍 Debugging
+
+### Flipper (Recomendado)
+```bash
+# Instalar Flipper
+# Descargar desde: https://fbflipper.com/
+
+# Configurar en package.json ya incluido
+```
+
+### React Native Debugger
+```bash
+# Instalar React Native Debugger
+choco install react-native-debugger
+
+# Usar con Metro bundler
+```
+
+### Debug en dispositivo físico
+
+#### Android
+```bash
+# Habilitar debug USB en dispositivo
+# Configurar ADB
+adb devices
+
+# Ejecutar en dispositivo
 yarn android
 ```
 
-### iOS
-
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
-
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
-```sh
-bundle install
+#### iOS
+```bash
+# Conectar dispositivo iOS
+# Confiar en la computadora
+# Ejecutar desde Xcode
 ```
 
-Then, and every time you update your native dependencies, run:
+## 🔧 Solución de Problemas
 
-```sh
-bundle exec pod install
+### Problemas Comunes
+
+#### Error de Metro bundler
+```bash
+yarn start --reset-cache
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+#### Error de dependencias nativas
+```bash
+# Android
+cd android && ./gradlew clean && cd ..
 
-```sh
-# Using npm
-npm run ios
-
-# OR using Yarn
-yarn ios
+# iOS
+cd ios && rm -rf Pods && pod install && cd ..
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+#### Error de permisos de cámara
+- Verificar configuración en `android/app/src/main/AndroidManifest.xml`
+- Para iOS: verificar `ios/TechniqueAnalyzer/Info.plist`
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+### Logs útiles
+```bash
+# Android logs
+adb logcat | grep "ReactNativeJS\|MediaPipe\|Camera"
 
-## Step 3: Modify your app
+# Metro bundler logs
+yarn start --verbose
+```
 
-Now that you have successfully run the app, let's make changes!
+## 📚 Recursos
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+### Documentación
+- [React Native](https://reactnative.dev/docs/getting-started)
+- [MediaPipe](https://developers.google.com/mediapipe)
+- [React Navigation](https://reactnavigation.org/)
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+### Tutoriales
+- [React Native Camera](https://react-native-vision-camera.com/)
+- [MediaPipe Pose Detection](https://developers.google.com/mediapipe/solutions/vision/pose_landmarker)
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+## 🤝 Contribución
 
-## Congratulations! :tada:
+1. Fork el repositorio
+2. Crear rama feature (`git checkout -b feature/nueva-funcionalidad`)
+3. Commit cambios (`git commit -am 'Agregar nueva funcionalidad'`)
+4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
+5. Crear Pull Request
 
-You've successfully run and modified your React Native App. :partying_face:
+## 📄 Licencia
 
-### Now what?
+Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para detalles.
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
+## ✨ Créditos
 
-# Troubleshooting
+- **MediaPipe** por Google para detección de poses
+- **React Native Community** por las librerías utilizadas
+- **Iconos** por Ionicons
 
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+---
 
-# Learn More
+## 📞 Soporte
 
-To learn more about React Native, take a look at the following resources:
+Si tienes problemas durante el desarrollo:
 
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+1. Revisa la sección de solución de problemas
+2. Verifica que todas las dependencias estén instaladas
+3. Asegúrate de que Android Studio esté configurado correctamente
+4. Comprueba que las variables de entorno estén configuradas
+
+Para desarrollo desde Windows 11, este setup te permitirá desarrollar y hacer debug de la aplicación Android. Para iOS, necesitarás acceso a macOS para builds finales, pero puedes usar servicios en la nube o CI/CD para automatizar el proceso.
+
+**¡Disfruta desarrollando TechniqueAnalyzer! 🚀**
