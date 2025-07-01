@@ -23,11 +23,17 @@ if %ERRORLEVEL% neq 0 (
 )
 
 :: Verificar dependencias críticas
-python -c "import PyQt5; import cv2; import mediapipe" 2>nul
+python -c "import PyQt5; import cv2; import mediapipe; import plotly; import requests" 2>nul
 if %ERRORLEVEL% neq 0 (
     echo Error: Dependencias faltantes. Instalando...
-    pip install PyQt5 opencv-python mediapipe pyqtgraph qtawesome
+    pip install PyQt5 opencv-python mediapipe pyqtgraph qtawesome plotly requests
 )
+
+:: Cambiar al directorio del proyecto
+cd /d "%~dp0"
+
+:: Añadir el directorio actual al PYTHONPATH para imports relativos
+set PYTHONPATH=%CD%;%PYTHONPATH%
 
 :: Ejecutar aplicación GUI
 echo Iniciando aplicación GUI...
