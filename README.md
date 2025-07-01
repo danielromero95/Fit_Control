@@ -1,186 +1,360 @@
-# 🏋️ Gym Performance Analyzer
+# 🏋️ TechniqueAnalyzer - Analizador de Técnica Deportiva
 
-**¡Ahora más fácil que nunca!** - Proyecto para experimentar con el análisis automático de ejercicios de fuerza combinando vídeo y datos procedentes de wearables. Incluye módulos de preprocesado, estimación de pose, cálculo de métricas y aplicaciones modernas con **facilidad de uso extrema**.
+**Aplicación móvil avanzada para Android** que utiliza MediaPipe para analizar la técnica deportiva a través de grabación de video y detección de puntos clave corporales. Incluye funcionalidades completas de análisis de ejercicios, generación de planes de entrenamiento con IA y seguimiento de progreso.
 
-## 🎯 **¿Primera vez? ¡Solo necesitas esto!**
-```bash
-./setup_easy_launcher.sh
-```
-**¡Y ya está!** Después podrás ejecutar todo con un clic desde el escritorio o escribiendo `gym-launcher` en cualquier terminal.
+## 🎯 **Funcionalidades Principales**
 
-## 🚀 **Características Principales**
+### 📱 **Aplicación Móvil React Native**
+- **🎥 Grabación de Video**: Captura movimientos deportivos con la cámara del dispositivo
+- **🤖 Análisis en Tiempo Real**: Detección de puntos clave corporales usando MediaPipe
+- **💡 Feedback Inteligente**: Análisis automático de la técnica y sugerencias de mejora
+- **📊 Historial de Análisis**: Seguimiento del progreso a lo largo del tiempo
+- **🌙 Tema Oscuro**: Diseño moderno y elegante optimizado para cualquier momento del día
+- **🏋️ Múltiples Ejercicios**: Soporte para sentadillas, press banca, peso muerto, y más
 
-La aplicación ofrece una plataforma integral que permite:
+### �️ **Aplicaciones de Escritorio**
+- **🎮 GUI Launcher**: Interfaz gráfica moderna para ejecutar todas las aplicaciones
+- **📊 Aplicación GUI PyQt**: Análisis completo de técnica deportiva con interfaz de escritorio
+- **🌐 Demo Web Streamlit**: Versión web para demostraciones
+- **� API Django**: Backend para servicios de análisis
 
-* **🤖 Generar planes de entrenamiento** personalizados basados en IA.
-* **📊 Analizar técnicamente** la ejecución de cada ejercicio.
-* **📈 Registrar y visualizar** el progreso del usuario a lo largo del tiempo.
-* **🎮 Acceso súper fácil** con GUI moderno y múltiples formas de ejecución.
+## 🚀 **Configuración Completa para Windows 11**
 
-## 🚀 Ejecución Super Fácil
+### **Paso 1: Instalación de Prerrequisitos Básicos**
 
-### 🎯 **Nuevo GUI Launcher (Recomendado)**
-
-La forma más fácil de ejecutar las aplicaciones es usando nuestro nuevo **GUI Launcher**:
-
-#### **⚡ Configuración de un solo comando:**
-```bash
-./setup_easy_launcher.sh
-```
-
-Este script configurará automáticamente:
-- ✅ GUI Launcher moderno con interfaz visual
-- ✅ Icono en el escritorio y menú de aplicaciones  
-- ✅ Alias de terminal `gym-launcher`
-- ✅ Verificación automática de dependencias
-- ✅ Instalación de tkinter si es necesario
-
-#### **🖥️ Formas de ejecutar después de la configuración:**
-
-1. **Desde el menú de aplicaciones**: Busca "Gym Performance Analyzer"
-2. **Desde el escritorio**: Doble clic en el icono
-3. **Desde cualquier terminal**: `gym-launcher`
-4. **Desde este directorio**: `./run_launcher.sh`
-
-### 🎮 **GUI Launcher - Características**
-
-El GUI Launcher te permite:
-- 🖱️ **Selección visual**: Botones coloridos para cada aplicación
-- 🚀 **Ejecución automática**: Un clic ejecuta todo automáticamente
-- 📊 **Estado en tiempo real**: Ve el estado de ejecución de cada app
-- 🔄 **Ejecución paralela**: Opción para ejecutar múltiples apps
-- 📚 **Acceso a documentación**: Botón directo a la documentación
-- ✅ **Verificación de entorno**: Comprueba que todo esté listo
-
-### 🔧 **Métodos Tradicionales**
-
-Para usuarios avanzados, también puedes usar:
-
-```bash
-./run_app.sh           # Launcher de terminal
-./run_gui_app.sh       # Aplicación GUI completa
-./run_streamlit_app.sh # Demo web Streamlit  
-./run_django_api.sh    # API Django
-./run_mobile_app.sh    # Aplicación móvil React Native
+#### **1.1 Chocolatey (Gestor de Paquetes)**
+Abre PowerShell como Administrador y ejecuta:
+```powershell
+Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
 ```
 
-**Verificación del entorno:**
-```bash
-./verificar_entorno.sh  # Verifica que todo esté listo
+#### **1.2 Git**
+```powershell
+choco install git -y
 ```
 
-📚 **Guía completa**: Ver `GUIA_EJECUCION.md` para instrucciones detalladas.
+#### **1.3 Node.js (versión 18 LTS)**
+```powershell
+choco install nodejs-lts -y
+```
 
-## Requisitos
+#### **1.4 Python (para aplicaciones de escritorio)**
+```powershell
+choco install python -y
+```
 
-Se recomienda crear el entorno Conda definido en `environment.yml`:
+#### **1.5 JDK 11 (requerido por React Native)**
+```powershell
+choco install openjdk11 -y
+```
 
+#### **1.6 Yarn (gestor de paquetes recomendado)**
+```powershell
+npm install -g yarn
+```
+
+### **Paso 2: Instalación de Android Studio**
+
+#### **2.1 Descargar Android Studio**
+1. Ve a: https://developer.android.com/studio
+2. Descarga la versión para Windows
+3. Ejecuta el instalador como Administrador
+
+#### **2.2 Configuración de Android Studio**
+1. **Abrir Android Studio**
+2. **Welcome Screen** → **More Actions** → **SDK Manager**
+3. En **SDK Platforms**, instalar:
+   - ✅ Android 13 (API level 33)
+   - ✅ Android 12 (API level 31)
+   - ✅ Android 11 (API level 30)
+4. En **SDK Tools**, verificar que estén instalados:
+   - ✅ Android SDK Build-Tools
+   - ✅ Android SDK Command-line Tools
+   - ✅ Android SDK Platform-Tools
+   - ✅ Android Emulator
+   - ✅ Intel x86 Emulator Accelerator (HAXM installer)
+
+#### **2.3 Configurar Variables de Entorno**
+1. **Buscar "Variables de entorno"** en el menú de Windows
+2. **Editar las variables de entorno del sistema**
+3. **Variables del sistema** → **Nueva**
+
+**ANDROID_HOME:**
+```
+Variable: ANDROID_HOME
+Valor: C:\Users\%USERNAME%\AppData\Local\Android\Sdk
+```
+
+**PATH (agregar estas rutas):**
+```
+%ANDROID_HOME%\platform-tools
+%ANDROID_HOME%\tools
+%ANDROID_HOME%\tools\bin
+```
+
+#### **2.4 Verificar Instalación**
+Abre una nueva ventana de PowerShell:
+```powershell
+adb version
+android --version
+```
+
+### **Paso 3: Crear y Configurar Emulador Android**
+
+#### **3.1 Crear Dispositivo Virtual**
+1. **Android Studio** → **More Actions** → **AVD Manager**
+2. **Create Virtual Device**
+3. **Seleccionar dispositivo**: Pixel 6 o similar
+4. **Seleccionar imagen del sistema**: 
+   - Recomendado: **API 33** (Android 13)
+   - Arquitectura: **x86_64** (más rápido)
+5. **Configuraciones avanzadas**:
+   - RAM: 4GB mínimo
+   - Internal Storage: 8GB mínimo
+   - Graphics: Hardware - GLES 2.0
+
+#### **3.2 Optimizar Rendimiento del Emulador**
+En la configuración avanzada del AVD:
+```
+CPU/ABI: x86_64
+RAM: 4096 MB
+VM Heap: 512 MB
+Internal Storage: 8192 MB
+Graphics: Hardware - GLES 2.0
+Boot option: Cold boot
+```
+
+### **Paso 4: Configuración del Proyecto**
+
+#### **4.1 Clonar el Repositorio**
 ```bash
+git clone [URL_DEL_REPOSITORIO]
+cd [NOMBRE_DEL_REPOSITORIO]
+```
+
+#### **4.2 Configurar Entorno Python (para aplicaciones de escritorio)**
+```bash
+# Crear entorno conda
 conda env create -f environment.yml
+conda activate gym_env
+
+# O con pip si no tienes conda
+pip install -r requirements.txt
 ```
 
-Luego activa el entorno:
+#### **4.3 Configurar Aplicación Móvil**
+```bash
+# Navegar al directorio de la aplicación móvil
+cd MobileApp
+
+# Limpiar caché (si es necesario)
+yarn cache clean
+
+# Instalar dependencias
+yarn install
+
+# Verificar configuración de React Native
+npx react-native doctor
+```
+
+### **Paso 5: Ejecutar la Aplicación Móvil**
+
+#### **5.1 Iniciar Emulador Android**
+1. **Android Studio** → **AVD Manager**
+2. **Clic en ▶️** junto a tu dispositivo virtual
+3. **Esperar a que cargue completamente** (puede tardar 2-3 minutos la primera vez)
+
+#### **5.2 Verificar Conexión**
+```bash
+# Verificar que el emulador esté conectado
+adb devices
+# Deberías ver algo como: emulator-5554    device
+```
+
+#### **5.3 Ejecutar la Aplicación**
+Desde el directorio `MobileApp`:
 
 ```bash
+# Opción 1: Usar el script automatizado (recomendado)
+./start-dev.bat
+
+# Opción 2: Ejecutar manualmente
+# Terminal 1: Iniciar Metro bundler
+yarn start
+
+# Terminal 2: Ejecutar en Android
+yarn android
+```
+
+### **Paso 6: Ejecutar Aplicaciones de Escritorio**
+
+#### **6.1 GUI Launcher (Recomendado)**
+```bash
+# Configuración automática (solo la primera vez)
+./setup_easy_launcher.sh
+
+# Ejecutar launcher
+./run_launcher.sh
+# O simplemente: gym-launcher
+```
+
+#### **6.2 Aplicaciones Individuales**
+```bash
+# Aplicación GUI completa
+./run_gui_app.sh
+
+# Demo web Streamlit
+./run_streamlit_app.sh
+
+# API Django
+./run_django_api.sh
+```
+
+## 🛠️ **Solución de Problemas Comunes**
+
+### **Problemas con Android Studio/Emulador**
+
+#### **Error: "ANDROID_HOME no está configurado"**
+```bash
+# Verificar variables de entorno
+echo $ANDROID_HOME
+# Si está vacío, configurar según Paso 2.3
+```
+
+#### **Error: "adb no encontrado"**
+```bash
+# Agregar platform-tools al PATH
+# Windows: C:\Users\%USERNAME%\AppData\Local\Android\Sdk\platform-tools
+```
+
+#### **Emulador muy lento**
+1. **Verificar BIOS**: Habilitar Intel VT-x/AMD-V
+2. **Windows Features**: Activar Hyper-V y Windows Hypervisor Platform
+3. **AVD Settings**: Usar x86_64 y Graphics: Hardware
+
+#### **Error: "Unable to locate adb"**
+```bash
+# Restart adb server
+adb kill-server
+adb start-server
+```
+
+### **Problemas con React Native**
+
+#### **Error de Metro bundler**
+```bash
+yarn start --reset-cache
+```
+
+#### **Error de dependencias**
+```bash
+# Limpiar e reinstalar
+cd MobileApp
+rm -rf node_modules
+yarn cache clean
+yarn install
+```
+
+#### **Error de Gradle (Android)**
+```bash
+cd MobileApp/android
+./gradlew clean
+cd ..
+yarn android
+```
+
+### **Problemas con Python/Conda**
+
+#### **Error de entorno**
+```bash
+# Verificar entorno activo
+conda info --envs
 conda activate gym_env
 ```
 
-## Estructura
+#### **Error de dependencias Python**
+```bash
+# Reinstalar requirements
+pip install -r requirements.txt --force-reinstall
+```
+
+## 📱 **Guía de Uso de la Aplicación Móvil**
+
+### **Primer Uso**
+1. **Abrir la aplicación** en el emulador
+2. **Permitir permisos** de cámara cuando se solicite
+3. **Seleccionar ejercicio** (sentadilla, press banca, etc.)
+4. **Grabar movimiento** siguiendo las instrucciones en pantalla
+5. **Ver análisis** con feedback automático
+
+### **Características Principales**
+- **📊 Dashboard**: Resumen de progreso y estadísticas
+- **🎥 Grabación**: Captura de video con guías visuales
+- **📈 Análisis**: Resultados detallados con puntos clave
+- **📅 Historial**: Seguimiento de evolución en el tiempo
+- **⚙️ Configuración**: Personalización de la experiencia
+
+## 🎯 **Estructura del Proyecto**
 
 ```text
-├── assets/                   # Iconos y recursos de la GUI
-│   ├── FitControl_logo.ico
-│   └── Gym_Loading_Gif.gif
-├── config.yaml               # Configuración principal validada con Pydantic
-├── data/
-│   └── gym_progress.db       # Base de datos SQLite de la aplicación
-├── docs/
-│   └── anteproyecto/
-│       └── Anteproyecto-Daniel_Romero_de_Miguel.pdf
-├── environment.yml           # Dependencias para reproducir el entorno
-├── src/
-│   ├── A_preprocessing/         # Extracción y preprocesado de vídeo
-│   │   ├── frame_extraction.py
-│   │   ├── video_metadata.py
-│   │   └── video_utils.py
-│   ├── B_pose_estimation/       # Estimadores y utilidades de pose
-│   │   ├── estimators.py
-│   │   └── metrics.py
-│   ├── D_modeling/              # Cálculo de métricas y conteo de repeticiones
-│   │   ├── exercise_analyzer.py
-│   │   └── math_utils.py
-│   ├── F_visualization/         # Renderizado de vídeo y utilidades de dibujo
-│   │   ├── drawing_utils.py
-│   │   └── video_renderer.py
+├── MobileApp/                    # Aplicación móvil React Native
+│   ├── src/
+│   │   ├── screens/             # Pantallas principales
+│   │   ├── components/          # Componentes reutilizables
+│   │   ├── services/            # MediaPipe y servicios API
+│   │   └── store/               # Estado global (Zustand)
+│   ├── android/                 # Código específico Android
+│   └── package.json             # Dependencias móviles
+├── src/                         # Aplicaciones de escritorio
 │   ├── gui/                     # Aplicación PyQt
-│   │   ├── main.py
-│   │   ├── main_window.py
-│   │   ├── worker.py
-│   │   ├── pages/
-│   │   │   ├── analysis_page.py
-│   │   │   ├── dashboard_page.py
-│   │   │   ├── plans_page.py
-│   │   │   ├── progress_page.py
-│   │   │   └── ...
-│   │   └── widgets/
-│   │       ├── plot_widget.py
-│   │       ├── results_panel.py
-│   │       ├── video_display.py
-│   │       └── video_player.py
-│   ├── services/               # Funciones auxiliares (IA generativa)
-│   │   └── plan_generator.py
-│   ├── i18n/                    # Archivos de internacionalización
-│   │   ├── es.json
-│   │   └── translator.py
-│   ├── app.py                   # Demo en Streamlit
-│   ├── config.py                # Carga y validación de config.yaml
-│   ├── constants.py             # Constantes generales de la aplicación
-│   ├── database.py              # Funciones para la base de datos
-│   └── pipeline.py              # Pipeline de análisis en memoria
-├── themes/                     # Estilos QSS para la GUI
-│   ├── dark.qss
-│   └── light.qss
-├── launcher.py               # GUI Launcher principal
-├── run_launcher.sh           # Script de ejecución del launcher  
-├── setup_easy_launcher.sh    # Configuración automática
-├── GymAnalyzer-Launcher.desktop  # Archivo de escritorio
-└── README.md
+│   ├── services/                # IA generativa
+│   └── pipeline.py              # Pipeline de análisis
+├── environment.yml              # Entorno Conda
+├── requirements.txt             # Dependencias Python
+└── README.md                    # Esta documentación
 ```
 
-## 🎯 Facilidad de Uso
+## 🚀 **Comandos Rápidos**
 
-### 🚀 **Nuevas Características de Facilidad**
-
-Hemos implementado múltiples mejoras para hacer que ejecutar las aplicaciones sea **extremadamente fácil**:
-
-#### **🔧 Configuración Automática**
-- **Un solo comando** configura todo: `./setup_easy_launcher.sh`
-- **Instalación automática** de dependencias (tkinter)
-- **Icono en el escritorio** y menú de aplicaciones
-- **Alias de terminal** `gym-launcher` para acceso desde cualquier lugar
-
-#### **🎮 GUI Launcher Moderno**
-- **Interfaz visual** con botones coloridos para cada aplicación
-- **Ejecución automática** - solo un clic ejecuta todo
-- **Estados en tiempo real** - ve el progreso de ejecución
-- **Recuperación automática** - si algo falla, prueba alternativas
-- **Múltiples versiones** - completa y simple según tu sistema
-
-#### **📱 Múltiples Formas de Acceso**
-1. **Menú de aplicaciones**: Busca "Gym Performance Analyzer"
-2. **Icono de escritorio**: Doble clic y listo
-3. **Terminal global**: `gym-launcher` desde cualquier ubicación
-4. **Script directo**: `./run_launcher.sh`
-
-### **⚡ Comparación: Antes vs Ahora**
-
-| Aspecto | Antes | Ahora |
-|---------|-------|-------|
-| **Pasos para ejecutar** | 5-10 comandos | 1 clic o comando |
-| **Conocimiento técnico** | Medio-Alto | **Ninguno** |
-| **Tiempo de setup** | 15+ minutos | **2 minutos** |
-| **Facilidad de uso** | 3/10 | **9/10** |
-
-📚 **Documentación detallada**: Ver `FACILIDAD_DE_USO.md` para guía completa.
-
+### **Desarrollo Móvil**
+```bash
+cd MobileApp
+yarn start          # Iniciar Metro bundler
+yarn android        # Ejecutar en Android
+yarn reset          # Limpiar caché
+adb devices         # Ver dispositivos conectados
 ```
+
+### **Desarrollo Escritorio**
+```bash
+./run_launcher.sh                # GUI Launcher
+./run_gui_app.sh                # Aplicación PyQt
+./run_streamlit_app.sh          # Demo web
+conda activate gym_env          # Activar entorno
+```
+
+## 📞 **Soporte y Recursos**
+
+### **Documentación Oficial**
+- [React Native](https://reactnative.dev/docs/getting-started)
+- [Android Studio](https://developer.android.com/studio/intro)
+- [MediaPipe](https://developers.google.com/mediapipe)
+
+### **Verificación Final**
+Antes de reportar problemas, ejecuta:
+```bash
+# Verificar entorno móvil
+cd MobileApp && npx react-native doctor
+
+# Verificar entorno Python
+./verificar_entorno.sh
+
+# Verificar conexión Android
+adb devices
+```
+
+---
+
+**¡Listo para analizar tu técnica deportiva! 🏋️‍♂️**
+
+> **Nota**: Este setup está optimizado para Windows 11. La primera ejecución puede tardar más debido a la descarga de dependencias y la configuración inicial del emulador Android.
