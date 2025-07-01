@@ -80,51 +80,101 @@ class AppLauncher:
         for i in range(3):
             buttons_frame.grid_rowconfigure(i, weight=1)
         
-        # Definir aplicaciones
-        self.apps = [
-            {
-                'name': '🖥️ Aplicación GUI\n(PyQt)',
-                'description': 'Interfaz de escritorio completa\ncon todas las funcionalidades',
-                'command': './run_gui_app.sh',
-                'color': '#4CAF50',
-                'hover_color': '#45a049'
-            },
-            {
-                'name': '🌐 Demo Streamlit\n(Web)',
-                'description': 'Interfaz web para\nanálisis rápido',
-                'command': './run_streamlit_app.sh',
-                'color': '#2196F3',
-                'hover_color': '#1976D2'
-            },
-            {
-                'name': '🔧 API Django\n(Backend)',
-                'description': 'Servidor API para\nentrenamientos',
-                'command': './run_django_api.sh',
-                'color': '#FF9800',
-                'hover_color': '#F57C00'
-            },
-            {
-                'name': '📱 App Móvil\n(React Native)',
-                'description': 'Aplicación móvil\nFitControl',
-                'command': './run_mobile_app.sh',
-                'color': '#9C27B0',
-                'hover_color': '#7B1FA2'
-            },
-            {
-                'name': '🚀 Todas las Apps\n(Paralelo)',
-                'description': 'Ejecutar múltiples\naplicaciones',
-                'command': 'all',
-                'color': '#F44336',
-                'hover_color': '#D32F2F'
-            },
-            {
-                'name': '🔍 Verificar Entorno\n(Check)',
-                'description': 'Verificar que todo\nesté configurado',
-                'command': './verificar_entorno.sh',
-                'color': '#607D8B',
-                'hover_color': '#455A64'
-            }
-        ]
+        # Detectar sistema operativo y configurar comandos
+        import platform
+        is_windows = platform.system() == 'Windows'
+        
+        # Definir aplicaciones con comandos específicos por sistema
+        if is_windows:
+            self.apps = [
+                {
+                    'name': '🖥️ Aplicación GUI\n(PyQt)',
+                    'description': 'Interfaz de escritorio completa\ncon todas las funcionalidades',
+                    'command': 'run_gui_app.bat',
+                    'color': '#4CAF50',
+                    'hover_color': '#45a049'
+                },
+                {
+                    'name': '🌐 Demo Streamlit\n(Web)',
+                    'description': 'Interfaz web para\nanálisis rápido',
+                    'command': 'run_streamlit_app.bat',
+                    'color': '#2196F3',
+                    'hover_color': '#1976D2'
+                },
+                {
+                    'name': '📱 App Móvil\n(React Native)',
+                    'description': 'Aplicación móvil\nFitControl (Info)',
+                    'command': 'info_mobile',
+                    'color': '#9C27B0',
+                    'hover_color': '#7B1FA2'
+                },
+                {
+                    'name': '🔧 Configuración\n(Setup)',
+                    'description': 'Configurar entorno\ny dependencias',
+                    'command': 'setup_windows.bat',
+                    'color': '#FF9800',
+                    'hover_color': '#F57C00'
+                },
+                {
+                    'name': '📚 Documentación\n(Windows)',
+                    'description': 'Guía específica\npara Windows 11',
+                    'command': 'open_windows_docs',
+                    'color': '#607D8B',
+                    'hover_color': '#455A64'
+                },
+                {
+                    'name': '❌ Salir\n',
+                    'description': 'Cerrar el launcher',
+                    'command': 'exit',
+                    'color': '#F44336',
+                    'hover_color': '#D32F2F'
+                }
+            ]
+        else:
+            self.apps = [
+                {
+                    'name': '🖥️ Aplicación GUI\n(PyQt)',
+                    'description': 'Interfaz de escritorio completa\ncon todas las funcionalidades',
+                    'command': './run_gui_app.sh',
+                    'color': '#4CAF50',
+                    'hover_color': '#45a049'
+                },
+                {
+                    'name': '🌐 Demo Streamlit\n(Web)',
+                    'description': 'Interfaz web para\nanálisis rápido',
+                    'command': './run_streamlit_app.sh',
+                    'color': '#2196F3',
+                    'hover_color': '#1976D2'
+                },
+                {
+                    'name': '🔧 API Django\n(Backend)',
+                    'description': 'Servidor API para\nentrenamientos',
+                    'command': './run_django_api.sh',
+                    'color': '#FF9800',
+                    'hover_color': '#F57C00'
+                },
+                {
+                    'name': '📱 App Móvil\n(React Native)',
+                    'description': 'Aplicación móvil\nFitControl',
+                    'command': './run_mobile_app.sh',
+                    'color': '#9C27B0',
+                    'hover_color': '#7B1FA2'
+                },
+                {
+                    'name': '🚀 Todas las Apps\n(Paralelo)',
+                    'description': 'Ejecutar múltiples\naplicaciones',
+                    'command': 'all',
+                    'color': '#F44336',
+                    'hover_color': '#D32F2F'
+                },
+                {
+                    'name': '🔍 Verificar Entorno\n(Check)',
+                    'description': 'Verificar que todo\nesté configurado',
+                    'command': './verificar_entorno.sh',
+                    'color': '#607D8B',
+                    'hover_color': '#455A64'
+                }
+            ]
         
         # Crear botones
         for i, app in enumerate(self.apps):
@@ -207,33 +257,63 @@ class AppLauncher:
                 
                 self.update_status(f"🚀 Iniciando {app_name}...", '#f39c12')
                 
+                # Detectar sistema operativo
+                import platform
+                is_windows = platform.system() == 'Windows'
+                
+                # Manejar comandos especiales
                 if command == 'all':
                     self.run_all_apps()
+                elif command == 'info_mobile':
+                    self.show_mobile_info()
+                elif command == 'open_windows_docs':
+                    self.open_windows_docs()
+                elif command == 'exit':
+                    self.exit_app()
                 else:
-                    # Hacer el script ejecutable
-                    subprocess.run(['chmod', '+x', command], check=True)
-                    
-                    # Ejecutar el comando
-                    process = subprocess.Popen(['bash', command], 
-                                             stdout=subprocess.PIPE, 
-                                             stderr=subprocess.PIPE)
-                    
-                    self.running_processes[app_name] = process
-                    self.update_status(f"✅ {app_name} ejecutándose", '#27ae60')
-                    
-                    # Esperar a que termine
-                    stdout, stderr = process.communicate()
-                    
-                    if process.returncode == 0:
-                        self.update_status(f"✅ {app_name} completado", '#27ae60')
+                    # Ejecutar script específico del sistema
+                    if is_windows:
+                        if command.endswith('.bat'):
+                            # Verificar que el archivo existe
+                            if not Path(command).exists():
+                                self.update_status(f"❌ Archivo {command} no encontrado", '#e74c3c')
+                                messagebox.showerror("Error", f"No se encontró el archivo {command}")
+                                return
+                            
+                            # Ejecutar script batch en nueva ventana
+                            process = subprocess.Popen(['cmd', '/c', 'start', 'cmd', '/k', command], 
+                                                     shell=True)
+                            self.update_status(f"✅ {app_name} iniciado en nueva ventana", '#27ae60')
+                        else:
+                            # Comando directo
+                            process = subprocess.run(command, shell=True, check=True)
+                            self.update_status(f"✅ {app_name} completado", '#27ae60')
                     else:
-                        self.update_status(f"❌ Error en {app_name}", '#e74c3c')
-                        if stderr:
-                            messagebox.showerror("Error", f"Error ejecutando {app_name}:\n{stderr.decode()}")
-                    
-                    # Limpiar del diccionario
-                    if app_name in self.running_processes:
-                        del self.running_processes[app_name]
+                        # Sistema Unix (Linux/macOS)
+                        # Hacer el script ejecutable
+                        subprocess.run(['chmod', '+x', command], check=True)
+                        
+                        # Ejecutar el comando
+                        process = subprocess.Popen(['bash', command], 
+                                                 stdout=subprocess.PIPE, 
+                                                 stderr=subprocess.PIPE)
+                        
+                        self.running_processes[app_name] = process
+                        self.update_status(f"✅ {app_name} ejecutándose", '#27ae60')
+                        
+                        # Esperar a que termine
+                        stdout, stderr = process.communicate()
+                        
+                        if process.returncode == 0:
+                            self.update_status(f"✅ {app_name} completado", '#27ae60')
+                        else:
+                            self.update_status(f"❌ Error en {app_name}", '#e74c3c')
+                            if stderr:
+                                messagebox.showerror("Error", f"Error ejecutando {app_name}:\n{stderr.decode()}")
+                        
+                        # Limpiar del diccionario
+                        if app_name in self.running_processes:
+                            del self.running_processes[app_name]
                         
             except Exception as e:
                 self.update_status(f"❌ Error: {str(e)}", '#e74c3c')
@@ -277,6 +357,72 @@ class AppLauncher:
         
         self.root.after(0, update)
     
+    def show_mobile_info(self):
+        """Mostrar información sobre la aplicación móvil"""
+        info_text = """
+📱 Aplicación Móvil FitControl (React Native)
+
+INFORMACIÓN IMPORTANTE:
+
+✅ QUÉ TENEMOS:
+• Una aplicación móvil completa React Native
+• Compatible con Android e iOS
+• Interfaz nativa optimizada
+
+⚠️ PARA EJECUTAR NECESITAS:
+
+1. EMULADOR ANDROID:
+   • Android Studio con AVD Manager
+   • O dispositivo Android físico
+
+2. DESARROLLO iOS (solo en macOS):
+   • Xcode con simulador iOS
+   • O dispositivo iOS físico
+
+3. ENTORNO DE DESARROLLO:
+   • Node.js (v16 o superior)
+   • React Native CLI
+   • Java Development Kit (JDK)
+
+🔧 CONFIGURACIÓN AUTOMÁTICA:
+Próximamente crearemos scripts automáticos para:
+• Instalar Android Studio
+• Configurar emuladores
+• Ejecutar la app móvil
+
+💡 RECOMENDACIÓN ACTUAL:
+Usa la aplicación de escritorio (PyQt) que tiene
+todas las funcionalidades y no requiere emulador.
+        """
+        
+        mobile_window = tk.Toplevel(self.root)
+        mobile_window.title("📱 Información Aplicación Móvil")
+        mobile_window.geometry("500x600")
+        mobile_window.configure(bg='#1e1e1e')
+        
+        text_widget = tk.Text(mobile_window, 
+                            wrap='word', 
+                            bg='#2e2e2e',
+                            fg='#ffffff',
+                            font=('Arial', 10),
+                            padx=20,
+                            pady=20)
+        text_widget.pack(fill='both', expand=True, padx=20, pady=20)
+        text_widget.insert('1.0', info_text)
+        text_widget.configure(state='disabled')
+
+    def open_windows_docs(self):
+        """Abrir documentación específica de Windows"""
+        import platform
+        if platform.system() == 'Windows':
+            windows_docs = ["README_WINDOWS.md", "README.md", "GUIA_EJECUCION.md"]
+            for doc in windows_docs:
+                if Path(doc).exists():
+                    os.startfile(doc)
+                    self.update_status(f"📚 Abriendo {doc}", '#27ae60')
+                    return
+        self.open_docs()
+
     def open_docs(self):
         """Abrir documentación"""
         docs_files = [
