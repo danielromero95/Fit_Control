@@ -1,0 +1,93 @@
+[tool.poetry]
+name = "gym-performance-analyzer"
+version = "2.0.0"
+description = "Analizador de rendimiento en el gimnasio con IA y visión por computadora"
+authors = ["Tu Nombre <tu.email@example.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+# Core dependencies
+numpy = "^1.24.0"
+pandas = "^2.0.0"
+pydantic = "^1.10.0"
+pyyaml = "^6.0"
+requests = "^2.31.0"
+
+# Computer Vision & AI
+opencv-python = "^4.8.0"
+mediapipe = "^0.10.21"
+scipy = "^1.11.0"
+
+# GUI Dependencies
+PyQt5 = "^5.15.0"
+pyqtgraph = "^0.13.0"
+qtawesome = "^1.2.0"
+matplotlib = "^3.7.0"
+
+# Web Interface
+streamlit = "^1.28.0"
+plotly = "^5.15.0"
+
+# Video Processing
+moviepy = "^1.0.3"
+
+# Django API (optional group)
+django = {version = "^4.2.0", optional = true}
+djangorestframework = {version = "^3.14.0", optional = true}
+djangorestframework-simplejwt = {version = "^5.2.2", optional = true}
+django-cors-headers = {version = "^4.0.0", optional = true}
+django-filter = {version = "^23.2", optional = true}
+psycopg2-binary = {version = "^2.9.6", optional = true}
+python-decouple = {version = "^3.8", optional = true}
+gunicorn = {version = "^21.2.0", optional = true}
+whitenoise = {version = "^6.5.0", optional = true}
+
+[tool.poetry.extras]
+api = ["django", "djangorestframework", "djangorestframework-simplejwt", "django-cors-headers", "django-filter", "psycopg2-binary", "python-decouple", "gunicorn", "whitenoise"]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+pytest-django = "^4.5.2"
+black = "^23.7.0"
+flake8 = "^6.0.0"
+isort = "^5.12.0"
+pyinstaller = "^5.13.0"
+
+[tool.poetry.scripts]
+gym-gui = "src.gui.main:main"
+gym-web = "scripts.run_streamlit:main"
+gym-api = "scripts.run_django:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ['py310']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "workout_api.settings"
+python_files = ["test_*.py", "*_test.py", "testing/*/test_*.py"]
